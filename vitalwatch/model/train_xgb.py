@@ -24,6 +24,7 @@ from ..data.loader import Cohort
 from ..features.offline import build_features
 from ..features.spec import FEATURE_INDEX, FEATURE_NAMES, spec_hash
 from .artifacts import sha256_file, write_golden, write_json
+from .calibration import apply_calibration, fit_platt
 from .encoding import MISSING_SENTINEL, encode
 
 PARAMS_FULL = dict(objective="binary:logistic", eval_metric=["auc", "aucpr"], tree_method="hist",
@@ -90,11 +91,18 @@ def run_training(c: Cohort, split: dict, artifacts_dir: Path, eval_path: Path,
     model_path = artifacts_dir / "model_xgb.json"
     booster.save_model(str(model_path))
 
+    # Platt calibration on validation rows (same censoring as training).
+    m_va = _mask_for(c, rf["pidx"], split["val"])
+    p_va_raw, _ = predict_margin(booster, X[m_va])
+    cal = fit_platt(p_va_raw[rf["keep"][m_va]], y[m_va][rf["keep"][m_va]])
+    log(f"calibration: {cal}")
+
     metrics = {}
     eval_arrays = {}
     for name in ("val", "test"):
         m = _mask_for(c, rf["pidx"], split[name])
-        p, _ = predict_margin(booster, X[m])
+        p_raw, _ = predict_margin(booster, X[m])
+        p = apply_calibration(p_raw, cal)
         k = rf["keep"][m]
         metrics[name] = {
             "auroc": round(float(roc_auc_score(y[m][k], p[k])), 4),
@@ -117,6 +125,13 @@ def run_training(c: Cohort, split: dict, artifacts_dir: Path, eval_path: Path,
         **{f"f_{k}": X[:, FEATURE_INDEX[k]].astype("<f8") for k in keep_cols},
     )
 
+    # Global drivers (mean |TreeSHAP| per clinical variable) on validation rows.
+    from ..explain.drivers import Explainer, global_drivers
+
+    va_rows = eval_arrays["val_rows"]
+    sample = np.sort(np.random.default_rng(11).choice(va_rows, size=min(20000, len(va_rows)), replace=False))
+    drivers = global_drivers(Explainer(model_path).contributions(X[sample]))
+
     # Golden rows: a fixed random sample of test rows.
     rng = np.random.default_rng(7)
     test_rows = eval_arrays["test_rows"]
@@ -133,6 +148,8 @@ def run_training(c: Cohort, split: dict, artifacts_dir: Path, eval_path: Path,
                        "xgboost": xgb.__version__, "numpy": np.__version__},
         "censor_after_onset_h": CENSOR_AFTER_ONSET_H,
         "missing_encoding": {"sentinel": MISSING_SENTINEL},
+        "global_drivers": drivers,
+        "calibration": cal,
     }
     write_json(artifacts_dir / "model_meta.json", meta)
     return meta

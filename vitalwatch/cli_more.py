@@ -56,14 +56,46 @@ def cmd_verify(args, cfg) -> int:
     return 0 if ok else 1
 
 
+def cmd_evaluate(args, cfg) -> int:
+    from .evaluation.evaluate import run_evaluation
+
+    source = args.source or cfg["data"]["source"]
+    p = _paths(cfg, source)
+    r = run_evaluation(p["eval"], p["results"], p["artifacts"], source, target_burden=args.target_burden)
+    sel = r["selected_policy"]
+    print(json.dumps({"hourly_test": r["hourly_test"], "policy_test": sel["test"],
+                      "alarm_reduction": r["alarm_reduction_test"],
+                      "baselines": [{"baseline": b["baseline"], "threshold": b["threshold"],
+                                     "baseline_test": {k: b["test"][k] for k in ("sensitivity_early", "alerts_per_100_patient_days", "median_lead_h")},
+                                     "vitalwatch_test": {k: b.get("vitalwatch_test", {}).get(k) for k in ("sensitivity_early", "alerts_per_100_patient_days", "median_lead_h")}}
+                                    for b in r["baselines_matched_burden"]]}, indent=1))
+    return 0
+
+
+def cmd_charts(args, cfg) -> int:
+    from .evaluation.charts import make_all
+
+    source = args.source or cfg["data"]["source"]
+    p = _paths(cfg, source)
+    print("\n".join(make_all(p["results"], p["artifacts"], p["eval"], source)))
+    return 0
+
+
 def register(sub) -> None:
     s = sub.add_parser("train", help="train the XGBoost model and export artifacts")
     s.add_argument("--source", choices=["synthetic", "physionet"], default=None)
     s.add_argument("--quick", action="store_true", help="small fast model (demo / CI)")
+
+    s = sub.add_parser("evaluate", help="choose the alert policy on val, report on test vs NEWS2/qSOFA/SIRS")
+    s.add_argument("--source", choices=["synthetic", "physionet"], default=None)
+    s.add_argument("--target-burden", type=float, default=30.0, help="alerts per 100 patient-days")
+
+    s = sub.add_parser("charts", help="render result charts for the README and deck")
+    s.add_argument("--source", choices=["synthetic", "physionet"], default=None)
 
     s = sub.add_parser("verify-artifacts", help="check golden predictions on this machine")
     s.add_argument("--scorer", default=None, help="xgboost | snapml | snapml-nnpa | snapml-cpu")
     s.add_argument("--atol", type=float, default=1e-5)
 
 
-COMMANDS = {"train": cmd_train, "verify-artifacts": cmd_verify}
+COMMANDS = {"train": cmd_train, "verify-artifacts": cmd_verify, "evaluate": cmd_evaluate, "charts": cmd_charts}

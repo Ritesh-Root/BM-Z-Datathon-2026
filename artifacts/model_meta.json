@@ -1,5 +1,11 @@
 {
  "best_iteration": 190,
+ "calibration": {
+  "a": 0.8176312515825072,
+  "b": -0.42316114918347486,
+  "fitted_on": "val",
+  "method": "platt"
+ },
  "censor_after_onset_h": 3,
  "feature_names": [
   "HR",
@@ -146,6 +152,98 @@
   "ICULOS"
  ],
  "file": "model_xgb.json",
+ "global_drivers": [
+  {
+   "clinical": true,
+   "label": "SpO2",
+   "mean_abs_logit": 0.8404,
+   "var": "O2Sat"
+  },
+  {
+   "clinical": true,
+   "label": "Temperature",
+   "mean_abs_logit": 0.3375,
+   "var": "Temp"
+  },
+  {
+   "clinical": false,
+   "label": "Hours in ICU",
+   "mean_abs_logit": 0.3206,
+   "var": "ICULOS"
+  },
+  {
+   "clinical": true,
+   "label": "Heart rate",
+   "mean_abs_logit": 0.3064,
+   "var": "HR"
+  },
+  {
+   "clinical": true,
+   "label": "Mean arterial pressure",
+   "mean_abs_logit": 0.2318,
+   "var": "MAP"
+  },
+  {
+   "clinical": true,
+   "label": "Platelets",
+   "mean_abs_logit": 0.2317,
+   "var": "Platelets"
+  },
+  {
+   "clinical": true,
+   "label": "Creatinine",
+   "mean_abs_logit": 0.2315,
+   "var": "Creatinine"
+  },
+  {
+   "clinical": true,
+   "label": "White cell count",
+   "mean_abs_logit": 0.2049,
+   "var": "WBC"
+  },
+  {
+   "clinical": true,
+   "label": "Respiratory rate",
+   "mean_abs_logit": 0.1851,
+   "var": "Resp"
+  },
+  {
+   "clinical": true,
+   "label": "Potassium",
+   "mean_abs_logit": 0.1604,
+   "var": "Potassium"
+  },
+  {
+   "clinical": true,
+   "label": "Bicarbonate",
+   "mean_abs_logit": 0.1188,
+   "var": "HCO3"
+  },
+  {
+   "clinical": true,
+   "label": "Magnesium",
+   "mean_abs_logit": 0.1146,
+   "var": "Magnesium"
+  },
+  {
+   "clinical": true,
+   "label": "Glucose",
+   "mean_abs_logit": 0.1097,
+   "var": "Glucose"
+  },
+  {
+   "clinical": true,
+   "label": "Systolic BP",
+   "mean_abs_logit": 0.1078,
+   "var": "SBP"
+  },
+  {
+   "clinical": true,
+   "label": "SaO2",
+   "mean_abs_logit": 0.0836,
+   "var": "SaO2"
+  }
+ ],
  "metrics": {
   "test": {
    "auprc": 0.1153,
@@ -191,7 +289,7 @@
  "quick": false,
  "source": "synthetic",
  "spec_hash": "5948e7090183e9bf",
- "train_seconds": 5.3,
+ "train_seconds": 5.0,
  "trained_on": {
   "arch": "x86_64",
   "numpy": "2.0.2",

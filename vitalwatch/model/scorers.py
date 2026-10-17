@@ -22,6 +22,7 @@ import numpy as np
 
 from ..features.spec import spec_hash
 from .artifacts import read_json
+from .calibration import apply_calibration
 from .encoding import encode, snapml_compatible_json
 
 log = logging.getLogger("vitalwatch.scorer")
@@ -75,6 +76,23 @@ class SnapMLScorer:
         return np.asarray(self.model.predict_proba(encode(X))[:, 1], dtype=np.float64)
 
 
+class CalibratedScorer:
+    """Wraps a scorer and applies the Platt calibration stored with the model."""
+
+    def __init__(self, inner, cal: dict | None):
+        self.inner = inner
+        self.cal = cal
+        self.name = inner.name
+        self.device = inner.device
+        self.detail = getattr(inner, "detail", inner.name)
+
+    def predict_raw(self, X: np.ndarray) -> np.ndarray:
+        return self.inner.predict(X)
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        return apply_calibration(self.inner.predict(X), self.cal)
+
+
 def check_spec(artifacts: Path) -> dict:
     meta = read_json(artifacts / "model_meta.json")
     if meta["spec_hash"] != spec_hash():
@@ -84,10 +102,19 @@ def check_spec(artifacts: Path) -> dict:
     return meta
 
 
-def load_scorer(kind: str, artifacts: str | Path, nthread: int = 1) -> Scorer:
-    """kind: 'auto' | 'xgboost' | 'snapml' | 'snapml-nnpa' | 'snapml-cpu'."""
+def load_scorer(kind: str, artifacts: str | Path, nthread: int = 1, calibrated: bool = False):
+    """kind: 'auto' | 'xgboost' | 'snapml' | 'snapml-nnpa' | 'snapml-cpu'.
+
+    calibrated=True wraps the scorer with the stored Platt calibration (what the
+    live system shows); the default returns raw model probabilities (what the
+    golden check verifies)."""
     artifacts = Path(artifacts)
-    check_spec(artifacts)
+    meta = check_spec(artifacts)
+    inner = _load_raw(kind, artifacts, nthread)
+    return CalibratedScorer(inner, meta.get("calibration")) if calibrated else inner
+
+
+def _load_raw(kind: str, artifacts: Path, nthread: int):
     path = artifacts / "model_xgb.json"
     if kind in ("auto", "snapml", "snapml-nnpa", "snapml-cpu"):
         fmt = {"snapml-nnpa": "zdnn_tensors", "snapml-cpu": "compress_trees"}.get(kind, "auto")
