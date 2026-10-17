@@ -21,6 +21,7 @@ the patient gets sicker (informative missingness), as in real ICUs.
 from __future__ import annotations
 
 import json
+import shutil
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -48,8 +49,8 @@ class SynthConfig:
     sepsis_rate: float = 0.08
     seed: int = 7
     los_median_h: float = 36.0
-    confounder_rate: float = 0.45
-    hidden_shock_rate: float = 0.10
+    confounder_rate: float = 0.8
+    hidden_shock_rate: float = 0.20
     hospital_b_frac: float = 0.5
 
 
@@ -98,7 +99,7 @@ def generate_patient(rng: np.random.Generator, cfg: SynthConfig, hospital: int) 
     n_conf = rng.poisson(cfg.confounder_rate * T / 36.0)
     for _ in range(n_conf):
         chans = rng.choice(CHANNELS[:3], size=int(rng.integers(1, 3)), replace=False)
-        start, dur, amp = rng.uniform(-4, T), rng.uniform(3, 14), rng.uniform(0.3, 0.9)
+        start, dur, amp = rng.uniform(-4, T), rng.uniform(3, 16), rng.uniform(0.3, 1.1)
         for c in chans:
             sev[c] = sev[c] + _bump(t, start, dur, amp)
 
@@ -110,12 +111,12 @@ def generate_patient(rng: np.random.Generator, cfg: SynthConfig, hospital: int) 
 
     fever_dir = 1.0
     if septic:
-        ramp_len = rng.uniform(6, 20)
-        amp = rng.uniform(0.6, 1.4)
+        ramp_len = rng.uniform(4, 24)
+        amp = rng.uniform(0.35, 1.2)
         center = t_onset - ramp_len / 2.0
         ramp = _sigmoid_ramp(t, center, ramp_len / 6.0, amp)
         for c in CHANNELS:
-            sev[c] = sev[c] + ramp * rng.uniform(0.15, 1.2)
+            sev[c] = sev[c] + ramp * rng.uniform(0.0, 1.0)
         fever_dir = 1.0 if rng.random() < 0.85 else -1.0
     for c in CHANNELS:
         sev[c] = np.clip(sev[c], -0.3, 2.5)
@@ -125,13 +126,13 @@ def generate_patient(rng: np.random.Generator, cfg: SynthConfig, hospital: int) 
     hr0, map0, rr0 = rng.normal(84, 12), rng.normal(82, 9), rng.normal(17, 3)
     t0, pp0 = rng.normal(36.9, 0.3), rng.normal(36, 6)
     v = {}
-    v["HR"] = hr0 + 32 * sev["cardio"] + 6 * sev["thermo"] + _ar1(rng, T, 4.0)
-    v["MAP"] = map0 - 20 * sev["cardio"] + _ar1(rng, T, 4.0)
+    v["HR"] = hr0 + 28 * sev["cardio"] + 6 * sev["thermo"] + _ar1(rng, T, 7.0)
+    v["MAP"] = map0 - 18 * sev["cardio"] + _ar1(rng, T, 6.0)
     v["SBP"] = v["MAP"] + pp0 - 4 * sev["cardio"] + _ar1(rng, T, 4.0)
     v["DBP"] = v["MAP"] - (v["SBP"] - v["MAP"]) / 2 + _ar1(rng, T, 2.5)
-    v["Resp"] = rr0 + 9 * sev["resp"] + 2 * sev["metab"] + _ar1(rng, T, 1.8)
+    v["Resp"] = rr0 + 8 * sev["resp"] + 2 * sev["metab"] + _ar1(rng, T, 2.8)
     v["O2Sat"] = np.minimum(98.5 - 5 * sev["resp"] + _ar1(rng, T, 1.0), 100)
-    v["Temp"] = t0 + fever_dir * 1.6 * sev["thermo"] + _ar1(rng, T, 0.25)
+    v["Temp"] = t0 + fever_dir * 1.4 * sev["thermo"] + _ar1(rng, T, 0.35)
 
     # --- labs ---------------------------------------------------------------
     lab = {}
@@ -177,8 +178,8 @@ def generate_patient(rng: np.random.Generator, cfg: SynthConfig, hospital: int) 
     for lname in LABS:
         obs[lname] = np.zeros(T, dtype=bool)
     for pname, members in PANELS.items():
-        p = {"bmp": lab_base + 0.06 * sick, "cbc": lab_base + 0.05 * sick,
-             "abg": 0.01 + 0.08 * np.clip(s_p + s_m, 0, 2),
+        p = {"bmp": lab_base + 0.025 * sick, "cbc": lab_base + 0.02 * sick,
+             "abg": 0.015 + 0.03 * np.clip(s_p + s_m, 0, 2),
              "lft": 0.01 + 0.02 * sick, "coag": 0.01 + 0.02 * sick,
              "trop": np.full(T, 0.005)}[pname]
         if pname in ("bmp", "cbc"):
@@ -186,7 +187,7 @@ def generate_patient(rng: np.random.Generator, cfg: SynthConfig, hospital: int) 
         draw = rng.random(T) < p
         for m in members:
             obs[m] = obs[m] | (draw & (rng.random(T) > 0.1))
-    obs["Lactate"] = obs["Lactate"] | (rng.random(T) < 0.01 + 0.12 * np.clip(s_m, 0, 1.5))
+    obs["Lactate"] = obs["Lactate"] | (rng.random(T) < 0.015 + 0.04 * np.clip(s_m, 0, 1.5))
 
     # --- assemble rows ---------------------------------------------------------
     rows = np.full((T, len(ALL_COLUMNS)), np.nan)
@@ -228,6 +229,9 @@ def generate_cohort(out_dir: str | Path, cfg: SynthConfig | None = None) -> dict
     """Generate ``cfg.n_patients`` PSV files under out_dir/training_set{A,B}."""
     cfg = cfg or SynthConfig()
     out = Path(out_dir)
+    for sub in ("training_setA", "training_setB"):
+        if (out / sub).exists():
+            shutil.rmtree(out / sub)
     rng = np.random.default_rng(cfg.seed)
     manifest = {"source": "synthetic", "generator": "vitalwatch.data.synth",
                 "config": asdict(cfg), "patients": {}}
