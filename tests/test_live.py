@@ -190,6 +190,12 @@ def test_sse_stream_emits_events(runtime):
     gen = hub.sse(heartbeat_s=0.2)
     assert next(gen).startswith("retry:")
     threading.Timer(0.05, lambda: hub.publish("tick", {"sim_h": 1, "beds": []})).start()
-    chunk = next(gen)
-    assert chunk.startswith("id: ") and "event: tick" in chunk
+    # other threads (the note service) may publish too; wait for our tick event
+    chunks = []
+    for _ in range(500):
+        chunk = next(gen)
+        chunks.append(chunk)
+        if "event: tick" in chunk:
+            break
+    assert chunks[-1].startswith("id: ") and "event: tick" in chunks[-1]
     gen.close()

@@ -11,6 +11,10 @@ from pathlib import Path
 from .config import resolve
 
 
+def argparse_hidden() -> str:
+    return "internal: one benchmark arm in its own process"
+
+
 def _paths(cfg: dict, source: str) -> dict[str, Path]:
     data = resolve(cfg, "data_dir")
     return {
@@ -146,6 +150,59 @@ def cmd_audit(args, cfg) -> int:
     return 0
 
 
+def _bench_rows(cfg, source: str, n: int = 20000):
+    import numpy as np
+
+    from .data.loader import load_cohort_npz
+    from .data.splits import load_splits
+    from .features.offline import build_features
+
+    p = _paths(cfg, source)
+    c = load_cohort_npz(p["cohort"]).subset(load_splits(p["splits"])["test"])
+    X = build_features(c)
+    rng = np.random.default_rng(0)
+    return X[np.sort(rng.choice(len(X), size=min(n, len(X)), replace=False))]
+
+
+def cmd_bench(args, cfg) -> int:
+    from .model.bench import ARMS, run_benchmark
+
+    source = args.source or cfg["data"]["source"]
+    arms = args.arms.split(",") if args.arms else ARMS
+    r = run_benchmark(resolve(cfg, "artifacts_dir"), _bench_rows(cfg, source), resolve(cfg, "results_dir"),
+                      arms=arms, quick=args.quick)
+    for a in r["arms"]:
+        if a.get("status") == "ok":
+            b1 = next((b for b in a["batches"] if b["batch"] == 1), a["batches"][0])
+            big = a["batches"][-1]
+            print(f"{a['arm']:12s} batch1 p50 {b1['p50_ms']:.3f} ms  p99 {b1['p99_ms']:.3f} ms | "
+                  f"batch{big['batch']} {big['rows_per_s']:.0f} rows/s | agree {a.get('agreement_vs_xgboost', {}).get('alert_decisions_identical')}")
+        else:
+            print(f"{a['arm']:12s} {a.get('status')}: {a.get('reason', '')[:120]}")
+    print(r["file"])
+    return 0
+
+
+def cmd_bench_arm(args, cfg) -> int:
+    from .model.bench import run_arm
+
+    batches = tuple(int(x) for x in args.batches.split(","))
+    r = run_arm(args.arm, resolve(cfg, "artifacts_dir"), Path(args.data), batches=batches,
+                min_calls=30 if args.quick else 100, max_seconds=1.0 if args.quick else 3.0)
+    print(json.dumps(r))
+    return 0
+
+
+def cmd_loadtest(args, cfg) -> int:
+    from .stream.loadtest import run_loadtest
+
+    source = args.source or cfg["data"]["source"]
+    beds = tuple(int(x) for x in args.beds.split(","))
+    r = run_loadtest(cfg, source, beds_list=beds, hours=args.hours)
+    print(r["file"])
+    return 0
+
+
 def register(sub) -> None:
     s = sub.add_parser("train", help="train the XGBoost model and export artifacts")
     s.add_argument("--source", choices=["synthetic", "physionet"], default=None)
@@ -173,9 +230,25 @@ def register(sub) -> None:
     s.add_argument("--file", default=None, help="audit log (default: newest in logs/)")
     s.add_argument("--seq", type=int, default=2, help="record to tamper with (tamper-copy)")
 
+    s = sub.add_parser("bench", help="inference latency/throughput on every available engine (incl. IBM Telum NNPA)")
+    s.add_argument("--source", choices=["synthetic", "physionet"], default=None)
+    s.add_argument("--arms", default=None, help="comma list; default all")
+    s.add_argument("--quick", action="store_true")
+
+    s = sub.add_parser("bench-arm", help=argparse_hidden())
+    s.add_argument("arm")
+    s.add_argument("--data", required=True)
+    s.add_argument("--batches", default="1,8,32,128,512,2048,8192")
+    s.add_argument("--quick", action="store_true")
+
+    s = sub.add_parser("loadtest", help="tick latency for 100 to 10,000 beds")
+    s.add_argument("--source", choices=["synthetic", "physionet"], default=None)
+    s.add_argument("--beds", default="100,1000,5000,10000")
+    s.add_argument("--hours", type=int, default=12)
+
     s = sub.add_parser("verify-artifacts", help="check golden predictions on this machine")
     s.add_argument("--scorer", default=None, help="xgboost | snapml | snapml-nnpa | snapml-cpu")
     s.add_argument("--atol", type=float, default=1e-5)
 
 
-COMMANDS = {"train": cmd_train, "verify-artifacts": cmd_verify, "evaluate": cmd_evaluate, "charts": cmd_charts, "serve": cmd_serve, "demo": cmd_serve, "audit": cmd_audit}
+COMMANDS = {"train": cmd_train, "verify-artifacts": cmd_verify, "evaluate": cmd_evaluate, "charts": cmd_charts, "serve": cmd_serve, "demo": cmd_serve, "audit": cmd_audit, "bench": cmd_bench, "bench-arm": cmd_bench_arm, "loadtest": cmd_loadtest}

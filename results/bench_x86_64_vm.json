@@ -1,0 +1,239 @@
+{
+ "environment": {
+  "host": "vm",
+  "python": "3.12.3",
+  "cpus": 4,
+  "accelerator": {
+   "arch": "x86_64",
+   "byteorder": "little",
+   "is_ibm_z": false,
+   "machine_type": null,
+   "machine_name": null,
+   "cpu_has_nnpa": false,
+   "zdnn_library": null,
+   "snapml": "1.17.2",
+   "ibm_zdnn_plugin": null,
+   "tensorflow": null,
+   "llama_cpp_python": null,
+   "nnpa_usable": false
+  },
+  "time_utc": "2026-10-17T09:03:50Z"
+ },
+ "model": {
+  "n_trees": 191,
+  "features": 142,
+  "source": "synthetic"
+ },
+ "threshold": 0.0746,
+ "arms": [
+  {
+   "arm": "xgb-cpu-1t",
+   "status": "ok",
+   "detail": "XGBoost 3.4.1 (CPU, 1 thread)",
+   "batches": [
+    {
+     "batch": 1,
+     "calls": 2000,
+     "p50_ms": 0.2252,
+     "p95_ms": 0.3696,
+     "p99_ms": 0.5249,
+     "rows_per_s": 4439.8
+    },
+    {
+     "batch": 8,
+     "calls": 2000,
+     "p50_ms": 0.2041,
+     "p95_ms": 0.4137,
+     "p99_ms": 0.6471,
+     "rows_per_s": 39189.8
+    },
+    {
+     "batch": 32,
+     "calls": 2000,
+     "p50_ms": 0.2692,
+     "p95_ms": 0.6044,
+     "p99_ms": 1.4711,
+     "rows_per_s": 118857.9
+    },
+    {
+     "batch": 128,
+     "calls": 2000,
+     "p50_ms": 0.5688,
+     "p95_ms": 0.9104,
+     "p99_ms": 1.0141,
+     "rows_per_s": 225053.2
+    },
+    {
+     "batch": 512,
+     "calls": 1719,
+     "p50_ms": 1.6546,
+     "p95_ms": 2.6516,
+     "p99_ms": 2.8452,
+     "rows_per_s": 309436.2
+    },
+    {
+     "batch": 2048,
+     "calls": 507,
+     "p50_ms": 5.7836,
+     "p95_ms": 6.6475,
+     "p99_ms": 8.861,
+     "rows_per_s": 354103.8
+    },
+    {
+     "batch": 8192,
+     "calls": 123,
+     "p50_ms": 22.5069,
+     "p95_ms": 37.396,
+     "p99_ms": 38.8769,
+     "rows_per_s": 363977.6
+    }
+   ],
+   "agreement_vs_xgboost": {
+    "rows": 8192,
+    "max_abs_diff": 0.0,
+    "alert_decisions_identical": 1.0
+   }
+  },
+  {
+   "arm": "xgb-cpu-mt",
+   "status": "ok",
+   "detail": "XGBoost 3.4.1 (CPU, 4 thread)",
+   "batches": [
+    {
+     "batch": 1,
+     "calls": 2000,
+     "p50_ms": 0.1212,
+     "p95_ms": 0.2561,
+     "p99_ms": 0.3478,
+     "rows_per_s": 8254.0
+    },
+    {
+     "batch": 8,
+     "calls": 2000,
+     "p50_ms": 0.1668,
+     "p95_ms": 0.3415,
+     "p99_ms": 0.6548,
+     "rows_per_s": 47951.1
+    },
+    {
+     "batch": 32,
+     "calls": 2000,
+     "p50_ms": 0.2431,
+     "p95_ms": 0.4766,
+     "p99_ms": 0.5701,
+     "rows_per_s": 131633.9
+    },
+    {
+     "batch": 128,
+     "calls": 2000,
+     "p50_ms": 0.3999,
+     "p95_ms": 0.5577,
+     "p99_ms": 0.7982,
+     "rows_per_s": 320078.4
+    },
+    {
+     "batch": 512,
+     "calls": 2000,
+     "p50_ms": 0.8564,
+     "p95_ms": 1.1732,
+     "p99_ms": 1.6627,
+     "rows_per_s": 597819.7
+    },
+    {
+     "batch": 2048,
+     "calls": 1186,
+     "p50_ms": 2.2858,
+     "p95_ms": 3.2728,
+     "p99_ms": 4.4088,
+     "rows_per_s": 895982.1
+    },
+    {
+     "batch": 8192,
+     "calls": 377,
+     "p50_ms": 7.4521,
+     "p95_ms": 11.4498,
+     "p99_ms": 13.1425,
+     "rows_per_s": 1099289.5
+    }
+   ],
+   "agreement_vs_xgboost": {
+    "rows": 8192,
+    "max_abs_diff": 0.0,
+    "alert_decisions_identical": 1.0
+   }
+  },
+  {
+   "arm": "snapml-cpu",
+   "status": "ok",
+   "detail": "IBM Snap ML (compress_trees)",
+   "batches": [
+    {
+     "batch": 1,
+     "calls": 2000,
+     "p50_ms": 0.0108,
+     "p95_ms": 0.0162,
+     "p99_ms": 0.028,
+     "rows_per_s": 92919.5
+    },
+    {
+     "batch": 8,
+     "calls": 2000,
+     "p50_ms": 0.0266,
+     "p95_ms": 0.0422,
+     "p99_ms": 0.0621,
+     "rows_per_s": 300289.0
+    },
+    {
+     "batch": 32,
+     "calls": 2000,
+     "p50_ms": 0.0768,
+     "p95_ms": 0.1063,
+     "p99_ms": 0.1393,
+     "rows_per_s": 416590.7
+    },
+    {
+     "batch": 128,
+     "calls": 2000,
+     "p50_ms": 0.2828,
+     "p95_ms": 0.3386,
+     "p99_ms": 0.3925,
+     "rows_per_s": 452580.7
+    },
+    {
+     "batch": 512,
+     "calls": 2000,
+     "p50_ms": 1.1508,
+     "p95_ms": 1.4751,
+     "p99_ms": 1.6049,
+     "rows_per_s": 444899.2
+    },
+    {
+     "batch": 2048,
+     "calls": 637,
+     "p50_ms": 4.562,
+     "p95_ms": 6.0039,
+     "p99_ms": 6.4825,
+     "rows_per_s": 448922.3
+    },
+    {
+     "batch": 8192,
+     "calls": 165,
+     "p50_ms": 18.0472,
+     "p95_ms": 19.755,
+     "p99_ms": 21.9421,
+     "rows_per_s": 453920.6
+    }
+   ],
+   "agreement_vs_xgboost": {
+    "rows": 8192,
+    "max_abs_diff": 3.2567875629663234e-07,
+    "alert_decisions_identical": 1.0
+   }
+  },
+  {
+   "arm": "snapml-nnpa",
+   "status": "unavailable",
+   "reason": "Error: zDNN library supported only in Z systems"
+  }
+ ]
+}

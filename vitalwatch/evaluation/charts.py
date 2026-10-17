@@ -209,6 +209,108 @@ def calibration_chart(eval_npz: Path, out: Path, source: str) -> None:
     _save(fig, out)
 
 
+ARM_LABELS = {"xgb-cpu-1t": "XGBoost, CPU 1 thread", "xgb-cpu-mt": "XGBoost, CPU all cores",
+              "snapml-cpu": "IBM Snap ML, CPU", "snapml-nnpa": "IBM Snap ML on Telum AI accelerator"}
+
+
+def _platform_label(env: dict) -> str:
+    acc = env.get("accelerator", {})
+    if acc.get("arch") == "s390x":
+        return "IBM LinuxONE (s390x)" + (f", {acc['machine_name']}" if acc.get("machine_name") else "")
+    return f"{acc.get('arch', '?')} development machine ({env.get('cpus', '?')} cores), not IBM Z"
+
+
+def bench_charts(bench: dict, out_dir: Path) -> list[str]:
+    arms = [a for a in bench["arms"] if a.get("status") == "ok"]
+    if not arms:
+        return []
+    arch = bench["environment"]["accelerator"]["arch"]
+    best = "snapml-nnpa" if any(a["arm"] == "snapml-nnpa" for a in arms) else "snapml-cpu"
+    made = []
+    # 1. single-bed latency (batch 1), p50 and p99
+    fig, ax = _figure(8.4, 4.6, left=0.33)
+    y = np.arange(len(arms))[::-1]
+    b1 = [next(b for b in a["batches"] if b["batch"] == 1) for a in arms]
+    ax.barh(y + 0.17, [b["p50_ms"] * 1000 for b in b1], 0.32, color=[BLUE if a["arm"] == best else GRAY for a in arms],
+            zorder=3, label="median")
+    ax.barh(y - 0.17, [b["p99_ms"] * 1000 for b in b1], 0.32, color=GRID, zorder=3, label="99th percentile")
+    for yi, b in zip(y, b1):
+        ax.text(b["p99_ms"] * 1000, yi - 0.17, f"  {b['p99_ms'] * 1000:.0f}", va="center", fontsize=9, color=TEXT_2)
+        ax.text(b["p50_ms"] * 1000, yi + 0.17, f"  {b['p50_ms'] * 1000:.0f}", va="center", fontsize=9, color=TEXT)
+    ax.set_yticks(y, [ARM_LABELS.get(a["arm"], a["arm"]) for a in arms])
+    ax.grid(axis="y", visible=False)
+    ax.set_xlabel("Microseconds to score one patient (batch of 1)")
+    ax.set_title("Scoring one patient: same model, different engines")
+    ax.legend(handles=[Patch(color=BLUE, label="median, fastest engine"), Patch(color=GRAY, label="median"),
+                       Patch(color=GRID, label="99th percentile")], loc="lower right")
+    fig.text(0.33, 0.02, _platform_label(bench["environment"]), fontsize=8.5, color=TEXT_2)
+    path = out_dir / f"bench_latency_{arch}.png"
+    _save(fig, path)
+    made.append(str(path))
+    # 2. throughput vs batch size
+    fig, ax = _figure(8.4, 4.8)
+    ends = []
+    for a in arms:
+        xs = [b["batch"] for b in a["batches"]]
+        ys = [b["rows_per_s"] for b in a["batches"]]
+        hl = a["arm"] == best
+        ax.plot(xs, ys, color=BLUE if hl else GRAY, lw=2 if hl else 1.5, marker="o", markersize=5,
+                markeredgecolor=SURFACE, zorder=3 if hl else 2)
+        ends.append([ys[-1], xs[-1], ARM_LABELS.get(a["arm"], a["arm"]), hl])
+    ends.sort()
+    for i in range(1, len(ends)):  # keep end labels at least 30% apart on the log axis
+        ends[i][0] = max(ends[i][0], ends[i - 1][0] * 1.3)
+    for y_lab, x_end, label, hl in ends:
+        ax.annotate(label, (x_end, y_lab), xytext=(8, 0), textcoords="offset points", fontsize=9,
+                    color=TEXT if hl else TEXT_2, va="center")
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlim(right=max(b["batch"] for a in arms for b in a["batches"]) * 12)
+    ax.set_xlabel("Beds scored per call (batch size)")
+    ax.set_ylabel("Patients scored per second")
+    ax.set_title("Batching a whole hospital into one call")
+    _footer(fig, "x")
+    fig.texts[-1].set_text(_platform_label(bench["environment"]))
+    path = out_dir / f"bench_throughput_{arch}.png"
+    _save(fig, path)
+    made.append(str(path))
+    return made
+
+
+def loadtest_chart(lt: dict, out_dir: Path) -> str:
+    rows = lt["rows"]
+    arch = lt["environment"]["accelerator"]["arch"]
+    fig, ax = _figure(8.4, 4.8)
+    xs = [r["beds"] for r in rows]
+    ax.plot(xs, [r["tick_ms_p50"] for r in rows], color=BLUE, lw=2, marker="o", markersize=7,
+            markeredgecolor=SURFACE, markeredgewidth=2, label="median", zorder=3)
+    ax.plot(xs, [r["tick_ms_p99"] for r in rows], color=GRAY, lw=1.5, marker="o", markersize=5,
+            markeredgecolor=SURFACE, label="99th percentile", zorder=2)
+    last = rows[-1]
+    ax.annotate(f"{last['beds']:,} beds: {last['tick_ms_p50']:.0f} ms per ward hour", (last["beds"], last["tick_ms_p50"]),
+                xytext=(-24, 34), textcoords="offset points", ha="right", fontsize=9.5, color=TEXT)
+    ax.set_xscale("log")
+    ax.set_xlabel("Beds monitored at the same time")
+    ax.set_ylabel("Milliseconds to process one hour for all beds")
+    ax.set_title("Whole-hospital scale on one machine")
+    ax.legend(loc="upper left")
+    fig.text(0.11, 0.02, _platform_label(lt["environment"]) + ". Includes features, scoring, policy, explanations and audit.",
+             fontsize=8.5, color=TEXT_2)
+    path = out_dir / f"loadtest_{arch}.png"
+    _save(fig, path)
+    return str(path)
+
+
+def make_platform_charts(results_dir: Path) -> list[str]:
+    _style()
+    made = []
+    for f in sorted(results_dir.glob("bench_*.json")):
+        made += bench_charts(json.loads(f.read_text()), results_dir / "charts")
+    for f in sorted(results_dir.glob("loadtest_*.json")):
+        made.append(loadtest_chart(json.loads(f.read_text()), results_dir / "charts"))
+    return made
+
+
 def make_all(results_dir: Path, artifacts_dir: Path, eval_npz: Path, source: str) -> list[str]:
     _style()
     r = json.loads((results_dir / f"metrics_{source}.json").read_text())
@@ -223,4 +325,4 @@ def make_all(results_dir: Path, artifacts_dir: Path, eval_npz: Path, source: str
         path = d / f"{name}_{source}.png"
         fn(path)
         made.append(str(path))
-    return made
+    return made + make_platform_charts(results_dir)

@@ -152,6 +152,7 @@ class Engine:
             self.rows_scored += len(idx)
 
             alerts_out = []
+            pending: list[tuple[int, str, str]] = []
             for j, b in enumerate(idx.tolist()):
                 v, s = self.beds[b], self.states[b]
                 p = float(risk[j])
@@ -172,13 +173,19 @@ class Engine:
                             acknowledge(s, v.hour, self.P.snooze_h)
                             v.markers.append((self.sim_h, "ack"))
                             continue
-                        alerts_out.append(self._raise_alert(b, aid, e.trigger, t0))
+                        pending.append((b, aid, e.trigger))
                     elif publish and e.kind in ("escalation", "resolve"):
                         seq, _ = self.audit.append(e.kind, {"alert_id": e.alert_id, "bed": b + 1, "pid": v.pseudo,
                                                             "risk": round(p, 4)}, sim_h=self.sim_h)
                         v.markers.append((self.sim_h, e.kind))
                         self.hub.publish(e.kind, {"alert_id": e.alert_id, "bed": b + 1, "pid": v.pseudo,
                                                   "sim_h": self.sim_h, "audit_seq": seq})
+            if pending:
+                te = time.perf_counter()
+                contrib = self.explainer.contributions(X[[b for b, _, _ in pending]])
+                self.lat.add("explain", 1e3 * (time.perf_counter() - te))
+                for k, (b, aid, trig) in enumerate(pending):
+                    alerts_out.append(self._raise_alert(b, aid, trig, t0, contrib[k]))
             t4 = time.perf_counter()
             self.lat.add("ingest", 1e3 * (t1 - t0))
             self.lat.add("features", 1e3 * (t2 - t1))
@@ -197,12 +204,9 @@ class Engine:
             self.ticks += 1
             return {"rows": len(idx), "alerts": alerts_out}
 
-    def _raise_alert(self, b: int, aid: str, trigger: str, t0: float) -> dict:
+    def _raise_alert(self, b: int, aid: str, trigger: str, t0: float, contrib: np.ndarray) -> dict:
         v = self.beds[b]
-        te = time.perf_counter()
-        contrib = self.explainer.contributions(v.last_x[None, :])[0]
         drivers = top_drivers(contrib, v.last_x, k=4)
-        self.lat.add("explain", 1e3 * (time.perf_counter() - te))
         facts = self._facts(b, trigger, drivers)
         note = self.notes.request(aid, facts)
         payload = {"alert_id": aid, "bed": b + 1, "pid": v.pseudo, "risk": round(v.risk, 4),
