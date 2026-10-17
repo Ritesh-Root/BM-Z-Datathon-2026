@@ -131,10 +131,10 @@ Full definitions are in [docs/MODEL_CARD.md](docs/MODEL_CARD.md).
 | Criterion | Evidence |
 |---|---|
 | Innovation and creativity | An alert policy designed against alarm fatigue; a local language model writing handoff notes that are checked against the facts; an audit chain that shows tampering |
-| Technical implementation and complexity | One feature definition shared by training and live serving, with an exact parity test; a streaming engine; a state-machine alert policy; TreeSHAP; asynchronous LLM; more than 100 automated tests |
+| Technical implementation and complexity | One feature definition shared by training and live serving, with an exact parity test; a streaming engine; a state-machine alert policy; TreeSHAP; asynchronous LLM; 91 automated tests |
 | Relevance and impact (AI for Good) | Earlier sepsis recognition with fewer alarms, measured against NEWS2, qSOFA and SIRS at matched alarm burden |
 | Why IBM Z | Telum accelerator scoring through Snap ML, on-box Granite, big-endian verified artifacts, whole-hospital load test |
-| Scalability and feasibility | 10,000 beds per ward-hour on one machine; runs inside IBM's stock LinuxONE container with two extra packages |
+| Scalability and feasibility | Load test from 100 to 10,000 simultaneous beds on one machine (see Results); runs inside IBM's stock LinuxONE container with two extra packages |
 | Presentation clarity | This page, a 3-minute demo video ([script](docs/DEMO_SCRIPT.md)) and the pitch deck |
 | Responsible AI | [Model card](docs/MODEL_CARD.md) with subgroup results and limits, [privacy notes](docs/PRIVACY.md), "decision support, not a diagnosis" |
 
@@ -152,7 +152,7 @@ More detail is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 python3.12 -m venv .venv && . .venv/bin/activate
 pip install -r requirements-dev.txt
 python -m vitalwatch demo --open        # then open http://localhost:38080
-pytest                                   # 100+ tests
+pytest                                   # 91 tests
 ```
 
 **On IBM LinuxONE**, using real data, the Telum accelerator and Granite: follow [docs/DEPLOY_LINUXONE.md](docs/DEPLOY_LINUXONE.md). In short:

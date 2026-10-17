@@ -12,17 +12,35 @@
 
 ## Short description (about 250 words)
 
+Use **version A** once `scripts/pipeline_physionet.sh` has run on LinuxONE and the README shows PhysioNet results. Use **version B** if only the synthetic results exist. Every number must match the README; do not claim results that were not measured.
+
+### Version A (after the LinuxONE real-data run)
+
 Event code: SSF2026. Sepsis kills about 11 million people a year, and each hour of delayed treatment raises the risk of death. Yet ICU teams face so many false alarms that most are ignored. VitalWatch is real-time AI for critical care decisions on IBM LinuxONE.
 
-Every hour, VitalWatch turns each ICU patient's vitals and labs into 142 trend features and scores the whole ward in one call. It uses IBM Snap ML on the IBM Telum on-chip AI accelerator, with the same model and identical alert decisions as XGBoost.
+Every hour it turns each ICU patient's vitals and labs into 142 trend features and scores the whole ward in one call with IBM Snap ML on the IBM Telum on-chip AI accelerator. It uses the same model as XGBoost, with alert decisions checked to be identical.
 
 An alert policy built against alarm fatigue raises fewer, earlier alerts. It waits for sustained or sharply rising risk, snoozes after a nurse responds, and escalates when nobody does.
 
-Each alert explains itself with exact per-patient contributions written in clinical words. IBM Granite, running locally on the same LinuxONE system, drafts an SBAR handoff note that is checked against the facts before it is shown, so no patient data ever leaves the machine. Every alert, note and acknowledgement goes into an HMAC-sealed, hash-chained audit log with pseudonymous IDs.
+Each alert explains itself with exact per-patient contributions written in clinical words. IBM Granite, running locally on the same LinuxONE system, drafts an SBAR handoff note that is checked against the facts before it is shown, so no patient data leaves the machine. Every alert, note and acknowledgement goes into an HMAC-sealed, hash-chained audit log with pseudonymous IDs.
 
-On held-out PhysioNet 2019 ICU patients, VitalWatch flags more septic patients before onset than NEWS2, qSOFA or SIRS at the same or lower alarm burden. Every setting was chosen on validation data, and results are also reported by sex, age and hospital. The same artifacts are verified bit-for-bit on big-endian IBM Z, and one LinuxONE system processes 10,000 beds per ward-hour.
+On held-out PhysioNet 2019 ICU patients, VitalWatch flagged [copy from README: % flagged early] of septic patients a median of [copy: hours] hours before onset, at [copy: alerts] alerts per 100 patient-days. It was compared with NEWS2, qSOFA and SIRS at the same alarm burden, with a fairness check by sex, age and hospital. The model is re-checked on big-endian IBM Z against 256 golden predictions, and the load test processed 10,000 beds per ward-hour in [copy: ms] ms.
 
-Built from scratch during the datathon, with more than 100 automated tests. Decision support only, not a diagnosis.
+Built from scratch during the datathon, with 91 automated tests. Decision support only, not a diagnosis.
+
+### Version B (synthetic results only; ready to paste now)
+
+Event code: SSF2026. Sepsis kills about 11 million people a year, and each hour of delayed treatment raises the risk of death. Yet ICU teams face so many false alarms that most are ignored. VitalWatch is real-time AI for critical care decisions on IBM LinuxONE.
+
+Every hour it turns each ICU patient's vitals and labs into 142 trend features and scores the whole ward in one batched call. It uses IBM Snap ML, which runs the same XGBoost model on the IBM Telum on-chip AI accelerator when the system exposes it, and the alert decisions match XGBoost.
+
+An alert policy built against alarm fatigue raises fewer, earlier alerts: it waits for sustained or sharply rising risk, snoozes after a nurse responds, and escalates when nobody does.
+
+Each alert explains itself with exact per-patient contributions in clinical words. A local IBM Granite model drafts an SBAR handoff note that is checked against the facts, so patient data never leaves the machine. Every decision goes into an HMAC-sealed, hash-chained audit log with pseudonymous IDs.
+
+On a held-out synthetic ICU cohort in the PhysioNet 2019 format, VitalWatch flagged more septic patients before onset than NEWS2, qSOFA or SIRS at the same or lower alarm burden, for example 60% against 47% for qSOFA at fewer alerts. The pipeline for the real PhysioNet data and the LinuxONE deployment scripts are included.
+
+Built from scratch during the datathon, with 91 automated tests. Decision support only, not a diagnosis.
 
 ## Technologies
 
@@ -55,6 +73,6 @@ Built from scratch during the datathon, with more than 100 automated tests. Deci
 - [ ] Event code SSF2026 is in the description (it is the first line above)
 - [ ] Repository link works and the default branch shows the README
 - [ ] Demo video (3 minutes or less) uploaded; link pasted
-- [ ] Pitch deck uploaded (PDF or PPTX)
+- [ ] Pitch deck uploaded: open the "VitalWatch pitch deck" artifact, update the [bracketed] placeholders after the LinuxONE run, then download it as PDF or PPTX
 - [ ] Real PhysioNet / LinuxONE results committed and `python -m vitalwatch report` re-run, or the README clearly says the numbers are synthetic
 - [ ] All team members are college students and listed on hack2skill

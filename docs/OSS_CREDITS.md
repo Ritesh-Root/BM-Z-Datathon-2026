@@ -44,6 +44,14 @@ Clinical early-warning baselines are implemented by us from their published defi
 | IBM Z Deep Neural Network library (zDNN) / ibm-zdnn-plugin | Apache-2.0 | https://github.com/IBM/zDNN |
 | IBM Granite language model (bundled GGUF in the IBM container) | Apache-2.0 | https://github.com/ibm-granite |
 
+## Development tools (used to build docs and screenshots, not needed to run VitalWatch)
+
+| Tool | Licence | Link | Used for |
+|---|---|---|---|
+| fontTools and Brotli | MIT | https://github.com/fonttools/fonttools | Converting IBM Plex web fonts to TTF for the charts |
+| Playwright with Chromium | Apache-2.0 | https://playwright.dev | Dashboard screenshots and end-to-end UI checks |
+| uv | MIT / Apache-2.0 | https://github.com/astral-sh/uv | Creating the pinned Python 3.12 environment |
+
 ## Fonts, icons and logos (no emoji are used anywhere in this project)
 
 | Asset | Licence | Link | Used for |
