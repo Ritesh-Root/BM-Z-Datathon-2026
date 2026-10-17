@@ -81,6 +81,71 @@ def cmd_charts(args, cfg) -> int:
     return 0
 
 
+def _ensure_pipeline(cfg, source: str, log=print) -> None:
+    """Build whatever is missing so a fresh clone can go straight to the dashboard."""
+    from .data.labels import outcomes
+    from .data.loader import load_cohort_npz, load_psv_tree, save_cohort_npz
+    from .data.splits import load_splits, make_splits, save_splits
+    from .features.spec import spec_hash
+    from .model.artifacts import read_json
+
+    p = _paths(cfg, source)
+    if not p["cohort"].exists():
+        raw = resolve(cfg, "data_dir") / source
+        if source == "synthetic" and not (raw / "training_setA").exists():
+            from .data.synth import SynthConfig, generate_cohort
+            log("generating synthetic cohort ...")
+            generate_cohort(raw, SynthConfig(n_patients=cfg["synth"]["n_patients"],
+                                             sepsis_rate=cfg["synth"]["sepsis_rate"], seed=cfg["synth"]["seed"]))
+        log("building cohort cache ...")
+        save_cohort_npz(load_psv_tree(raw, source=source), p["cohort"])
+    if not p["splits"].exists():
+        save_splits(make_splits(outcomes(load_cohort_npz(p["cohort"])), seed=cfg["data"]["seed"]), p["splits"])
+    meta_path = p["artifacts"] / "model_meta.json"
+    stale = (not meta_path.exists() or read_json(meta_path).get("spec_hash") != spec_hash()
+             or read_json(meta_path).get("source") != source)
+    if stale or not p["eval"].exists():
+        from .model.train_xgb import run_training
+        log("training model ...")
+        run_training(load_cohort_npz(p["cohort"]), load_splits(p["splits"]), p["artifacts"], p["eval"],
+                     quick=source == "synthetic", log=log)
+    if stale or not (p["artifacts"] / "policy.json").exists() or read_json(p["artifacts"] / "policy.json").get("source") != source:
+        from .evaluation.evaluate import run_evaluation
+        log("choosing alert policy on validation patients ...")
+        run_evaluation(p["eval"], p["results"], p["artifacts"], source, log=log)
+
+
+def cmd_serve(args, cfg) -> int:
+    from .web.app import serve
+
+    source = args.source or cfg["data"]["source"]
+    if args.speed:
+        cfg["engine"]["speed"] = args.speed
+    if args.no_llm:
+        cfg["llm"]["backend"] = "off"
+    if args.demo:
+        _ensure_pipeline(cfg, source)
+    serve(cfg, source, host=args.host, port=args.port, open_access=args.open)
+    return 0
+
+
+def cmd_audit(args, cfg) -> int:
+    from .privacy.audit import tamper_copy, verify
+    from .privacy.pseudonym import load_or_create_key
+
+    key = load_or_create_key(resolve(cfg, "secrets_dir") / "audit.key", env="VW_AUDIT_KEY")
+    path = Path(args.file) if args.file else max(resolve(cfg, "logs_dir").glob("audit_*.jsonl"), key=lambda q: q.stat().st_mtime)
+    if args.action == "verify":
+        r = verify(path, key).to_dict()
+        print(json.dumps({"file": str(path), **r}, indent=2))
+        return 0 if r["ok"] else 2
+    dst = path.with_name(path.stem + f"_tampered_seq{args.seq}.jsonl")
+    tamper_copy(path, dst, args.seq)
+    r = verify(dst, key).to_dict()
+    print(json.dumps({"tampered_copy": str(dst), **r}, indent=2))
+    return 0
+
+
 def register(sub) -> None:
     s = sub.add_parser("train", help="train the XGBoost model and export artifacts")
     s.add_argument("--source", choices=["synthetic", "physionet"], default=None)
@@ -93,9 +158,24 @@ def register(sub) -> None:
     s = sub.add_parser("charts", help="render result charts for the README and deck")
     s.add_argument("--source", choices=["synthetic", "physionet"], default=None)
 
+    for name, demo in (("serve", False), ("demo", True)):
+        s = sub.add_parser(name, help="run the live ward dashboard" + (" (builds anything missing first)" if demo else ""))
+        s.add_argument("--source", choices=["synthetic", "physionet"], default=None)
+        s.add_argument("--host", default=None)
+        s.add_argument("--port", type=int, default=None)
+        s.add_argument("--speed", type=float, default=None, help="simulated hours per tick interval multiplier")
+        s.add_argument("--no-llm", action="store_true", help="template notes only")
+        s.add_argument("--open", action="store_true", help="no ward token (local demos only)")
+        s.set_defaults(demo=demo)
+
+    s = sub.add_parser("audit", help="verify the audit chain or make a tampered copy for the demo")
+    s.add_argument("action", choices=["verify", "tamper-copy"])
+    s.add_argument("--file", default=None, help="audit log (default: newest in logs/)")
+    s.add_argument("--seq", type=int, default=2, help="record to tamper with (tamper-copy)")
+
     s = sub.add_parser("verify-artifacts", help="check golden predictions on this machine")
     s.add_argument("--scorer", default=None, help="xgboost | snapml | snapml-nnpa | snapml-cpu")
     s.add_argument("--atol", type=float, default=1e-5)
 
 
-COMMANDS = {"train": cmd_train, "verify-artifacts": cmd_verify, "evaluate": cmd_evaluate, "charts": cmd_charts}
+COMMANDS = {"train": cmd_train, "verify-artifacts": cmd_verify, "evaluate": cmd_evaluate, "charts": cmd_charts, "serve": cmd_serve, "demo": cmd_serve, "audit": cmd_audit}

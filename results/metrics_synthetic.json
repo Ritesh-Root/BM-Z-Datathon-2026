@@ -85,7 +85,7 @@
    },
    "vitalwatch_params": {
     "breakthrough_delta": Infinity,
-    "escalate_after_h": 2,
+    "escalate_after_h": 3,
     "resolve_after_h": 3,
     "rise_delta": 0.15,
     "rise_enabled": false,
@@ -155,7 +155,7 @@
    },
    "vitalwatch_params": {
     "breakthrough_delta": 0.15,
-    "escalate_after_h": 2,
+    "escalate_after_h": 3,
     "resolve_after_h": 3,
     "rise_delta": 0.15,
     "rise_enabled": false,
@@ -225,7 +225,7 @@
    },
    "vitalwatch_params": {
     "breakthrough_delta": 0.15,
-    "escalate_after_h": 2,
+    "escalate_after_h": 3,
     "resolve_after_h": 3,
     "rise_delta": 0.15,
     "rise_enabled": false,
@@ -295,7 +295,7 @@
    },
    "vitalwatch_params": {
     "breakthrough_delta": Infinity,
-    "escalate_after_h": 2,
+    "escalate_after_h": 3,
     "resolve_after_h": 3,
     "rise_delta": 0.15,
     "rise_enabled": false,
@@ -365,7 +365,7 @@
    },
    "vitalwatch_params": {
     "breakthrough_delta": 0.15,
-    "escalate_after_h": 2,
+    "escalate_after_h": 3,
     "resolve_after_h": 3,
     "rise_delta": 0.15,
     "rise_enabled": false,
@@ -857,7 +857,7 @@
  "selected_policy": {
   "params": {
    "breakthrough_delta": 0.15,
-   "escalate_after_h": 2,
+   "escalate_after_h": 3,
    "resolve_after_h": 3,
    "rise_delta": 0.15,
    "rise_enabled": false,

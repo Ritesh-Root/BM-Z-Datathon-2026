@@ -53,7 +53,7 @@ BOUNDS: dict[str, tuple[float, float]] = {
 
 # Display labels and units used by the dashboard, driver text and notes.
 DISPLAY: dict[str, tuple[str, str]] = {
-    "HR": ("Heart rate", "bpm"), "O2Sat": ("SpO2", "%"), "Temp": ("Temperature", "C"),
+    "HR": ("Heart rate", "bpm"), "O2Sat": ("SpO2", "%"), "Temp": ("Temperature", "\u00b0C"),
     "SBP": ("Systolic BP", "mmHg"), "MAP": ("Mean arterial pressure", "mmHg"),
     "DBP": ("Diastolic BP", "mmHg"), "Resp": ("Respiratory rate", "/min"),
     "EtCO2": ("End-tidal CO2", "mmHg"), "BaseExcess": ("Base excess", "mmol/L"),

@@ -36,7 +36,7 @@ class PolicyParams:
     rise_window_h: int = 3
     snooze_h: int = 6
     breakthrough_delta: float = 0.15
-    escalate_after_h: int = 2
+    escalate_after_h: int = 3
     resolve_after_h: int = 3
 
     def to_dict(self) -> dict:

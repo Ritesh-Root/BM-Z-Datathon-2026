@@ -93,7 +93,7 @@ def driver_text(var: str, x: np.ndarray) -> tuple[str, str]:
         v = g(var)
         if math.isnan(v):
             return label, "not measured"
-        text = f"{_fmt(v, var)} {unit}".strip()
+        text = f"{_fmt(v, var)}{'' if unit == '%' else ' '}{unit}".strip()
         if var in VITALS:
             d6 = g(f"{var}__d6")
             if not math.isnan(d6) and abs(d6) >= (0.3 if var == "Temp" else 1):
@@ -122,6 +122,8 @@ def top_drivers(contrib_row: np.ndarray, x: np.ndarray, k: int = 4) -> list[Driv
         if val <= 0 or len(out) >= k:
             break
         label, text = driver_text(var, x)
+        if text == "not measured":  # missingness can carry risk, but it is not a bedside finding
+            continue
         out.append(Driver(var, label, text, val))
     return out
 

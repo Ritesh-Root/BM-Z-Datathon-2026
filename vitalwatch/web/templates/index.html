@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VitalWatch ICU</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='brand/vitalwatch-logo.svg') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="shell">
+    <div class="brand">
+      <img src="{{ url_for('static', filename='brand/vitalwatch-logo.svg') }}" alt="" width="28" height="28">
+      <span class="name">VitalWatch</span>
+      <span class="ward">ICU ward replay</span>
+    </div>
+    <div class="clock" aria-live="polite">
+      <span class="i i-time" aria-hidden="true"></span>
+      <span id="clock">Ward hour --</span>
+    </div>
+    <div class="chips">
+      <span class="chip" id="chip-platform" title="Where VitalWatch is running">
+        <span class="i i-linux" aria-hidden="true"></span><span>--</span></span>
+      <span class="chip" id="chip-scorer" title="Which engine scores every bed each hour">
+        <span class="i i-chip" aria-hidden="true"></span><span>--</span></span>
+      <span class="chip" id="chip-data" title="Where the replayed patients come from">
+        <span class="i i-document-security" aria-hidden="true"></span><span>--</span></span>
+    </div>
+    <div class="controls" role="group" aria-label="Replay speed">
+      <button class="ghost icon-btn" id="btn-pause" title="Pause replay" aria-label="Pause replay">
+        <span class="i i-pause" aria-hidden="true"></span></button>
+      <button class="ghost speed" data-speed="1">1x</button>
+      <button class="ghost speed" data-speed="4">4x</button>
+      <button class="ghost speed" data-speed="10">10x</button>
+      <label class="toggle" title="Evaluation overlay: shows when the dataset labels sepsis onset. The model never sees this.">
+        <input type="checkbox" id="gt-toggle"> <span>Labelled onset</span></label>
+      <button class="ghost icon-btn" id="btn-theme" title="Switch light / dark" aria-label="Switch light or dark theme">
+        <span class="i i-view" aria-hidden="true"></span></button>
+    </div>
+  </header>
+
+  <section class="alert-strip" id="alert-strip" aria-live="polite" aria-label="Active alerts"></section>
+
+  <main class="layout">
+    <section class="ward" id="ward" aria-label="Ward beds"></section>
+    <aside class="drawer" id="drawer" aria-label="Bed details" hidden>
+      <div class="drawer-head">
+        <div>
+          <div class="drawer-title" id="d-title">Bed</div>
+          <div class="drawer-sub" id="d-sub"></div>
+        </div>
+        <button class="ghost icon-btn" id="d-close" aria-label="Close details"><span class="i i-close" aria-hidden="true"></span></button>
+      </div>
+      <div class="drawer-body">
+        <div class="risk-row">
+          <div><div class="label">Sepsis risk now</div><div class="risk-big" id="d-risk">--</div></div>
+          <div class="state-tag" id="d-state"></div>
+        </div>
+        <figure class="trend">
+          <figcaption class="label">Risk over the last 48 hours <span class="muted">(dashed line: alert threshold)</span></figcaption>
+          <div class="trend-wrap" id="d-trend"></div>
+        </figure>
+        <section class="card">
+          <h3><span class="i i-activity" aria-hidden="true"></span> Why VitalWatch is concerned</h3>
+          <ol class="drivers" id="d-drivers"></ol>
+          <p class="fine">Exact per-patient contributions from the model (TreeSHAP). Context such as hours in ICU is used but not shown.</p>
+        </section>
+        <section class="card">
+          <h3><span class="i i-ibm-granite" aria-hidden="true"></span> Handoff note (SBAR)</h3>
+          <div class="note-meta" id="d-note-meta"></div>
+          <pre class="note" id="d-note"></pre>
+        </section>
+        <section class="card" id="d-ack-card">
+          <h3><span class="i i-checkmark--outline" aria-hidden="true"></span> Acknowledge</h3>
+          <div class="form-row">
+            <label for="ack-user">Nurse</label>
+            <input id="ack-user" value="RN Demo" maxlength="60">
+          </div>
+          <div class="form-row">
+            <label for="ack-reason">Outcome</label>
+            <select id="ack-reason">
+              <option>Assessed at bedside, sepsis screen started</option>
+              <option>Assessed, physician informed</option>
+              <option>Assessed, other cause explains the change</option>
+              <option>Already under treatment</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <span class="label">Snooze</span>
+            <div class="seg" role="radiogroup" aria-label="Snooze hours">
+              <button class="seg-btn" data-snooze="2" role="radio" aria-checked="false">2 h</button>
+              <button class="seg-btn active" data-snooze="4" role="radio" aria-checked="true">4 h</button>
+              <button class="seg-btn" data-snooze="6" role="radio" aria-checked="false">6 h</button>
+            </div>
+          </div>
+          <button class="primary" id="ack-btn">Acknowledge alert</button>
+          <p class="ack-result" id="ack-result" aria-live="polite"></p>
+        </section>
+      </div>
+    </aside>
+  </main>
+
+  <footer class="status" aria-label="System status">
+    <span class="stat" title="Time to score every bed in one batch, per tick"><span class="i i-flash" aria-hidden="true"></span>
+      Scoring <b id="m-score">--</b></span>
+    <span class="stat" title="From the new hourly row arriving to the alert being published"><span class="i i-alarm" aria-hidden="true"></span>
+      Alert path p99 <b id="m-e2e">--</b></span>
+    <span class="stat"><span class="i i-hospital-bed" aria-hidden="true"></span> <b id="m-beds">--</b> beds</span>
+    <span class="stat" title="Alerts raised by the VitalWatch policy vs. alarms a plain threshold would have raised"><span class="i i-notification" aria-hidden="true"></span>
+      Alerts <b id="m-alerts">0</b> &middot; plain threshold <b id="m-shadow">0</b></span>
+    <span class="stat" title="Local language model for handoff notes"><span class="i i-ibm-granite" aria-hidden="true"></span>
+      Notes <b id="m-llm">--</b></span>
+    <span class="stat audit" title="Tamper-evident audit chain head"><span class="i i-document-security" aria-hidden="true"></span>
+      Audit #<b id="m-seq">--</b> <code id="m-head">--</code>
+      <button class="ghost small" id="btn-verify">Verify chain</button>
+      <span id="verify-result" aria-live="polite"></span></span>
+  </footer>
+
+  <div class="token-dialog" id="token-dialog" hidden>
+    <div class="token-box">
+      <h3>Ward token required</h3>
+      <p>Paste the token printed in the server console to acknowledge alerts.</p>
+      <input id="token-input" autocomplete="off">
+      <button class="primary" id="token-save">Save</button>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

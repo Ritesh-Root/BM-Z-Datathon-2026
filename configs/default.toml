@@ -21,7 +21,7 @@ seed = 7
 [engine]
 n_beds = 24
 # Wall-clock seconds per simulated ICU hour at speed 1.
-tick_seconds = 4.0
+tick_seconds = 5.0
 speed = 1.0
 # Hours of history replayed silently before the demo starts.
 preroll_hours = 18
