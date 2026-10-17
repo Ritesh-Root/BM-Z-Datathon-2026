@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 400" role="img" aria-labelledby="arch-title arch-desc" font-family="IBM Plex Sans, Helvetica Neue, Arial, sans-serif">
+  <title id="arch-title">VitalWatch architecture on IBM LinuxONE</title>
+  <desc id="arch-desc">Hourly bedside data flows into a feature engine, a risk model running on IBM Snap ML and the Telum AI accelerator, an alert policy, explanations and a tamper-evident audit chain, all on IBM LinuxONE. A local IBM Granite model drafts handoff notes in the background. Nurses see alerts on a live dashboard and acknowledge them.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#525252"/>
+    </marker>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0f62fe"/>
+    </marker>
+  </defs>
+  <rect width="1000" height="400" fill="#ffffff"/>
+  <g transform="translate(0,-70)">
+
+  <!-- input -->
+  <rect x="16" y="150" width="150" height="120" fill="#f4f4f4" stroke="#c6c6c6"/>
+  <text x="91" y="182" text-anchor="middle" font-size="14" font-weight="600" fill="#161616">Bedside data</text>
+  <text x="91" y="204" text-anchor="middle" font-size="12" fill="#525252">vitals and labs,</text>
+  <text x="91" y="221" text-anchor="middle" font-size="12" fill="#525252">one row per ICU hour</text>
+  <text x="91" y="246" text-anchor="middle" font-size="11" fill="#6f6f6f">PhysioNet 2019 replay</text>
+
+  <!-- LinuxONE boundary -->
+  <rect x="196" y="86" width="636" height="358" fill="#edf5ff" stroke="#0f62fe" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="212" y="108" font-size="14" font-weight="600" fill="#0043ce">IBM LinuxONE</text>
+  <text x="212" y="126" font-size="12" fill="#0043ce">patient data stays on this system</text>
+
+  <!-- pipeline row -->
+  <g font-size="12" fill="#525252">
+    <rect x="216" y="150" width="128" height="120" fill="#ffffff" stroke="#8d8d8d"/>
+    <text x="280" y="180" text-anchor="middle" font-size="14" font-weight="600" fill="#161616">Features</text>
+    <text x="280" y="202" text-anchor="middle">142 per patient</text>
+    <text x="280" y="219" text-anchor="middle">same code for</text>
+    <text x="280" y="236" text-anchor="middle">training and live</text>
+
+    <rect x="368" y="150" width="140" height="120" fill="#ffffff" stroke="#0f62fe" stroke-width="2"/>
+    <text x="438" y="180" text-anchor="middle" font-size="14" font-weight="600" fill="#161616">Risk model</text>
+    <text x="438" y="202" text-anchor="middle">XGBoost trees on</text>
+    <text x="438" y="219" text-anchor="middle">IBM Snap ML and the</text>
+    <text x="438" y="236" text-anchor="middle" fill="#0043ce" font-weight="600">Telum AI accelerator</text>
+    <text x="438" y="256" text-anchor="middle" font-size="11">whole ward per call</text>
+
+    <rect x="532" y="150" width="128" height="120" fill="#ffffff" stroke="#8d8d8d"/>
+    <text x="596" y="180" text-anchor="middle" font-size="14" font-weight="600" fill="#161616">Alert policy</text>
+    <text x="596" y="202" text-anchor="middle">sustain, hysteresis,</text>
+    <text x="596" y="219" text-anchor="middle">snooze, escalation</text>
+    <text x="596" y="236" text-anchor="middle">fewer, earlier alerts</text>
+
+    <rect x="684" y="150" width="128" height="120" fill="#ffffff" stroke="#8d8d8d"/>
+    <text x="748" y="180" text-anchor="middle" font-size="14" font-weight="600" fill="#161616">Explain</text>
+    <text x="748" y="202" text-anchor="middle">exact TreeSHAP</text>
+    <text x="748" y="219" text-anchor="middle">drivers in plain</text>
+    <text x="748" y="236" text-anchor="middle">clinical language</text>
+  </g>
+  <line x1="166" y1="210" x2="214" y2="210" stroke="#525252" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="344" y1="210" x2="366" y2="210" stroke="#525252" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="508" y1="210" x2="530" y2="210" stroke="#525252" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="660" y1="210" x2="682" y2="210" stroke="#525252" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- granite -->
+  <rect x="532" y="320" width="280" height="96" fill="#ffffff" stroke="#8d8d8d"/>
+  <text x="672" y="350" text-anchor="middle" font-size="14" font-weight="600" fill="#161616">IBM Granite, local (llama.cpp + zDNN)</text>
+  <text x="672" y="372" text-anchor="middle" font-size="12" fill="#525252">drafts the SBAR handoff note in the background;</text>
+  <text x="672" y="389" text-anchor="middle" font-size="12" fill="#525252">checked against the facts before it is shown;</text>
+  <text x="672" y="406" text-anchor="middle" font-size="12" fill="#525252">the alert never waits for it</text>
+  <line x1="748" y1="270" x2="748" y2="318" stroke="#525252" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+
+  <!-- audit -->
+  <rect x="216" y="320" width="292" height="96" fill="#ffffff" stroke="#8d8d8d"/>
+  <text x="362" y="350" text-anchor="middle" font-size="14" font-weight="600" fill="#161616">Tamper-evident audit chain</text>
+  <text x="362" y="372" text-anchor="middle" font-size="12" fill="#525252">every alert, note and acknowledgement,</text>
+  <text x="362" y="389" text-anchor="middle" font-size="12" fill="#525252">HMAC-sealed and chained; pseudonymous</text>
+  <text x="362" y="406" text-anchor="middle" font-size="12" fill="#525252">patient IDs only</text>
+  <line x1="596" y1="270" x2="440" y2="318" stroke="#525252" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- dashboard -->
+  <rect x="856" y="150" width="128" height="120" fill="#161616"/>
+  <text x="920" y="180" text-anchor="middle" font-size="14" font-weight="600" fill="#ffffff">Ward</text>
+  <text x="920" y="198" text-anchor="middle" font-size="14" font-weight="600" fill="#ffffff">dashboard</text>
+  <text x="920" y="220" text-anchor="middle" font-size="12" fill="#c6c6c6">live alerts,</text>
+  <text x="920" y="237" text-anchor="middle" font-size="12" fill="#c6c6c6">why, handoff note,</text>
+  <text x="920" y="254" text-anchor="middle" font-size="12" fill="#c6c6c6">acknowledge</text>
+  <line x1="812" y1="196" x2="854" y2="196" stroke="#0f62fe" stroke-width="2" marker-end="url(#arrow-blue)"/>
+  <path d="M920,270 L920,440 L362,440 L362,418" fill="none" stroke="#525252" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="640" y="458" text-anchor="middle" font-size="11" fill="#525252">nurse acknowledgement is written to the audit chain</text>
+  <line x1="812" y1="368" x2="868" y2="368" stroke="#525252" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <line x1="868" y1="368" x2="868" y2="272" stroke="#525252" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+  </g>
+</svg>

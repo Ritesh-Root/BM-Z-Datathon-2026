@@ -203,6 +203,15 @@ def cmd_loadtest(args, cfg) -> int:
     return 0
 
 
+def cmd_report(args, cfg) -> int:
+    from .config import ROOT
+    from .evaluation.report import render, update_readme
+
+    ok = update_readme(ROOT / "README.md", resolve(cfg, "results_dir"))
+    print("README results section updated" if ok else render(resolve(cfg, "results_dir")))
+    return 0
+
+
 def register(sub) -> None:
     s = sub.add_parser("train", help="train the XGBoost model and export artifacts")
     s.add_argument("--source", choices=["synthetic", "physionet"], default=None)
@@ -246,9 +255,11 @@ def register(sub) -> None:
     s.add_argument("--beds", default="100,1000,5000,10000")
     s.add_argument("--hours", type=int, default=12)
 
+    sub.add_parser("report", help="rewrite the README results section from results/")
+
     s = sub.add_parser("verify-artifacts", help="check golden predictions on this machine")
     s.add_argument("--scorer", default=None, help="xgboost | snapml | snapml-nnpa | snapml-cpu")
     s.add_argument("--atol", type=float, default=1e-5)
 
 
-COMMANDS = {"train": cmd_train, "verify-artifacts": cmd_verify, "evaluate": cmd_evaluate, "charts": cmd_charts, "serve": cmd_serve, "demo": cmd_serve, "audit": cmd_audit, "bench": cmd_bench, "bench-arm": cmd_bench_arm, "loadtest": cmd_loadtest}
+COMMANDS = {"train": cmd_train, "verify-artifacts": cmd_verify, "evaluate": cmd_evaluate, "charts": cmd_charts, "serve": cmd_serve, "demo": cmd_serve, "audit": cmd_audit, "bench": cmd_bench, "bench-arm": cmd_bench_arm, "loadtest": cmd_loadtest, "report": cmd_report}
