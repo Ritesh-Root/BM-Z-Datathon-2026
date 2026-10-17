@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.venv*/
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+
+# Data and runtime state (never commit patient data, keys or logs)
+/data/
+/secrets/
+/logs/
+.env
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/

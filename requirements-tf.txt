@@ -1,0 +1,4 @@
+# Optional: only for the Keras benchmark arm (CPU vs IBM zDNN / NNPA).
+# On LinuxONE use the container's tensorflow + ibm-zdnn-plugin instead.
+tensorflow==2.18.1
+keras==3.14.0

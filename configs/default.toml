@@ -1,0 +1,47 @@
+# VitalWatch default configuration. Every key can be overridden with an
+# environment variable VW_<SECTION>_<KEY>, e.g. VW_SERVER_PORT=38081.
+
+[paths]
+data_dir = "data"
+artifacts_dir = "artifacts"
+results_dir = "results"
+logs_dir = "logs"
+secrets_dir = "secrets"
+
+[data]
+# "synthetic" (generated locally) or "physionet" (PhysioNet 2019 sepsis data)
+source = "synthetic"
+seed = 2026
+
+[synth]
+n_patients = 4000
+sepsis_rate = 0.08
+seed = 7
+
+[engine]
+n_beds = 24
+# Wall-clock seconds per simulated ICU hour at speed 1.
+tick_seconds = 4.0
+speed = 1.0
+# Hours of history replayed silently before the demo starts.
+preroll_hours = 18
+scenario = ""
+
+[scorer]
+# "auto" tries Snap ML on the IBM Telum accelerator first, then XGBoost CPU.
+kind = "auto"
+
+[llm]
+# "auto" uses the local IBM Granite model when it is found, else template notes.
+backend = "auto"
+model_path = ""
+max_tokens = 160
+n_ctx = 2048
+temperature = 0.2
+timeout_s = 90
+
+[server]
+host = "0.0.0.0"
+port = 38080
+# Token required on POST endpoints. Empty means "generate one at start-up".
+token = ""

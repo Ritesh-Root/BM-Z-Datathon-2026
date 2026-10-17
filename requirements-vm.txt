@@ -1,0 +1,7 @@
+# Installed on top of the IBM LinuxONE JupyterLab container, which already
+# ships numpy, pandas, xgboost, scikit-learn, matplotlib, tensorflow,
+# ibm-zdnn-plugin and llama_cpp_python (with an IBM Granite model).
+flask==3.1.3
+# IBM Snap ML: runs the exported XGBoost model on the IBM Telum on-chip
+# AI accelerator (NNPA). IBM-provided tool, licensed under IBM ILAN.
+snapml==1.17.2

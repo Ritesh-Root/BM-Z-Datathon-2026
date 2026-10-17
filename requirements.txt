@@ -1,0 +1,10 @@
+# Runtime dependencies, pinned to the versions shipped in the IBM LinuxONE
+# Community Cloud JupyterLab container (jupyterlab-image-s390x), so the code
+# behaves the same on x86 laptops and on IBM LinuxONE (s390x).
+numpy==2.0.2
+pandas==3.0.6
+xgboost==3.4.1
+scikit-learn==1.9.0
+scipy==1.13.1
+matplotlib==3.11.2
+flask==3.1.3
