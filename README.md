@@ -8,6 +8,10 @@
 IBM Z Datathon 2026 &middot; Event code <b>SSF2026</b> &middot; Track: <b>Real-Time AI for Critical Decisions</b> &middot; Theme: AI for Good
 </p>
 
+<p align="center">
+<a href="docs/submission/VitalWatch_demo.mp4"><b>Demo video (2 min 58 s)</b></a> &middot; <a href="docs/submission/VitalWatch_deck.pdf"><b>Pitch deck (PDF)</b></a> &middot; <a href="docs/SUBMISSION.md">Submission text</a>
+</p>
+
 > **Project status at a glance**
 >
 > | Part | Status |
@@ -312,7 +316,7 @@ Full model card: [docs/MODEL_CARD.md](docs/MODEL_CARD.md).
 | Relevance and impact (AI for Good) | Earlier sepsis recognition with fewer alarms, compared with NEWS2, qSOFA and SIRS at the same alarm count |
 | Why IBM Z | Telum accelerator through Snap ML; Granite on the same system; big-endian verified model; whole-hospital load test |
 | Scalability and feasibility | 100 to 10,000 simultaneous beds on one machine; runs in IBM's stock LinuxONE container plus two packages |
-| Presentation clarity | This page, a 3-minute video script ([docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md)) and a pitch deck |
+| Presentation clarity | This page, a captioned [demo video](docs/submission/VitalWatch_demo.mp4) under 3 minutes, a [pitch deck](docs/submission/VitalWatch_deck.pdf) and a voice-over [script](docs/DEMO_SCRIPT.md) |
 | Responsible AI | Fairness table, model card, privacy notes, stated limits |
 
 ## 12. Deploy on IBM LinuxONE
@@ -417,6 +421,7 @@ artifacts/      trained model (JSON), metadata, alert policy, reference predicti
 results/        metrics, benchmark and load-test results (JSON) and charts
 scenarios/      the curated demo ward
 docs/           model card, privacy, architecture, deployment, demo script, submission text, credits, images
+docs/submission/ demo video (MP4) and pitch deck (PDF), ready to upload
 ```
 
 ## 17. Hackathon rules
@@ -478,7 +483,8 @@ Click **Verify chain** in the dashboard footer, or run `python -m vitalwatch aud
 - [Privacy](docs/PRIVACY.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Deploy on LinuxONE](docs/DEPLOY_LINUXONE.md)
-- [Demo video script](docs/DEMO_SCRIPT.md)
+- [Demo video](docs/submission/VitalWatch_demo.mp4) and [script](docs/DEMO_SCRIPT.md)
+- [Pitch deck (PDF)](docs/submission/VitalWatch_deck.pdf)
 - [Submission text](docs/SUBMISSION.md)
 - [Credits](docs/OSS_CREDITS.md)
 
