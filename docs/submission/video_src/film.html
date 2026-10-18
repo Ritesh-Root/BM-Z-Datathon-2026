@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>VitalWatch film</title>
+<!-- GSAP 3.12.5 (standard licence, https://gsap.com/standard-license) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<style>
+@font-face{font-family:Plex;src:url(../../../vitalwatch/web/static/brand/fonts/IBMPlexSans-Regular.woff2);font-weight:400}
+@font-face{font-family:Plex;src:url(../../../vitalwatch/web/static/brand/fonts/IBMPlexSans-Medium.woff2);font-weight:500}
+@font-face{font-family:Plex;src:url(../../../vitalwatch/web/static/brand/fonts/IBMPlexSans-SemiBold.woff2);font-weight:600}
+@font-face{font-family:Plex;src:url(../../../vitalwatch/web/static/brand/fonts/IBMPlexSans-Bold.woff2);font-weight:700}
+@font-face{font-family:PlexMono;src:url(../../../vitalwatch/web/static/brand/fonts/IBMPlexMono-Regular.woff2);font-weight:400}
+@font-face{font-family:PlexMono;src:url(../../../vitalwatch/web/static/brand/fonts/IBMPlexMono-Medium.woff2);font-weight:500}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;overflow:hidden;background:#f4f4f4}
+#stage{position:relative;width:1920px;height:1080px;overflow:hidden;background:#f4f4f4;color:#161616;font-family:Plex,Arial,sans-serif}
+.a{position:absolute}
+.mono{font-family:PlexMono,monospace}
+.mask{position:absolute;overflow:hidden}
+.in{display:block;white-space:nowrap}
+.blue{color:#0f62fe}
+.red{color:#da1e28}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+const PART = (location.search.slice(1) || 'intro');
+const S = document.getElementById('stage');
+const C = {ink:'#161616', bg:'#f4f4f4', blue:'#0f62fe', red:'#da1e28', grey:'#6f6f6f', line:'#e0e0e0', white:'#ffffff'};
+
+function E(tag, css, html, parent) {
+  const e = document.createElement(tag);
+  if (css) e.style.cssText = css;
+  if (html != null) e.innerHTML = html;
+  (parent || S).appendChild(e);
+  return e;
+}
+// A line of text inside a clipping mask. Returns the inner element (animate its yPercent).
+function M(css, html, parent, innerCss) {
+  const w = E('div', 'position:absolute;overflow:hidden;' + css, null, parent);
+  const i = E('div', 'display:block;white-space:nowrap;' + (innerCss || ''), html, w);
+  gsap.set(i, {yPercent: 115});
+  return i;
+}
+const tl = gsap.timeline({paused: true});
+const rise = (el, t, d) => tl.to(el, {yPercent: 0, duration: d || 0.5, ease: 'power3.out'}, t);
+const drop = (el, t, d) => tl.to(el, {yPercent: 115, duration: d || 0.35, ease: 'power3.in'}, t);
+const up = (el, t, d) => tl.to(el, {yPercent: -115, duration: d || 0.35, ease: 'power3.in'}, t);
+const pop = (el, t, d, o) => tl.to(el, {scale: 1, duration: d || 0.45, ease: 'back.out(' + (o || 1.3) + ')'}, t);
+const renderers = [];
+
+function ecgPath(width, mid, period) {
+  let d = 'M0 ' + mid;
+  for (let x0 = 0; x0 < width; x0 += period) {
+    const p = (dx, dy) => ' L' + (x0 + dx) + ' ' + (mid + dy);
+    d += p(period * 0.45, 0) + p(period * 0.5, -14) + p(period * 0.55, 0) + p(period * 0.6, 0) +
+         p(period * 0.64, 18) + p(period * 0.69, -86) + p(period * 0.74, 64) + p(period * 0.78, 0) +
+         p(period * 0.86, 0) + p(period * 0.92, -18) + p(period, 0);
+  }
+  return d;
+}
+function ecg(top, width) {
+  const svg = E('div', 'position:absolute;left:0;top:' + top + 'px;width:1920px;height:220px');
+  svg.innerHTML = '<svg width="1920" height="220" viewBox="0 0 1920 220"><path d="' + ecgPath(width || 1920, 110, 320) +
+    '" fill="none" stroke="#161616" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/></svg>';
+  const path = svg.querySelector('path');
+  const L = path.getTotalLength();
+  path.style.strokeDasharray = L; path.style.strokeDashoffset = L;
+  return {box: svg, path, L};
+}
+function cursor() {
+  const c = E('div', 'position:absolute;left:0;top:0;width:48px;height:48px;z-index:50');
+  c.innerHTML = '<svg width="48" height="48" viewBox="0 0 48 48"><path d="M6 4 L6 38 L15 29 L21 43 L27 40 L21 27 L34 27 Z" fill="#161616" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/></svg>';
+  gsap.set(c, {x: 1960, y: 1120, transformOrigin: '6px 4px'});
+  return c;
+}
+function checkSvg(color, size) {
+  return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" style="vertical-align:-' + Math.round(size * 0.15) +
+    'px"><path d="M4 12.5 L10 18 L20 6" fill="none" stroke="' + color + '" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+}
+// Corner brand mark: small logo and name
+function brand(t, show) {
+  const logo = E('img', 'position:absolute;left:56px;top:40px;width:56px;height:56px', null);
+  logo.src = '../../../vitalwatch/web/static/brand/vitalwatch-logo.svg';
+  gsap.set(logo, {scale: 0, transformOrigin: '50% 50%'});
+  const name = M('left:128px;top:44px;height:48px', 'VitalWatch', null, 'font-size:34px;font-weight:600;line-height:48px');
+  if (show) { pop(logo, t, 0.4); rise(name, t + 0.1); }
+  return {logo, name};
+}
+// Wordmark row: logo + letters. Returns pieces and the logo slot position.
+function wordmark(top, size) {
+  const word = 'VitalWatch';
+  const fs = size, logoSize = Math.round(size * 1.2);
+  const row = E('div', 'position:absolute;left:0;top:' + top + 'px;width:1920px;display:flex;justify-content:center;align-items:center;gap:' + Math.round(size * 0.28) + 'px');
+  const slot = E('div', 'width:' + logoSize + 'px;height:' + logoSize + 'px;flex:none', null, row);
+  const letters = E('div', 'display:flex;overflow:hidden;font-size:' + fs + 'px;font-weight:500;line-height:1.2;letter-spacing:-1px', null, row);
+  const spans = [...word].map(ch => { const s = E('span', 'display:inline-block', ch, letters); gsap.set(s, {yPercent: 115}); return s; });
+  const logo = E('img', 'position:absolute;width:' + logoSize + 'px;height:' + logoSize + 'px', null);
+  logo.src = '../../../vitalwatch/web/static/brand/vitalwatch-logo.svg';
+  return {row, slot, spans, logo, logoSize};
+}
+function placeLogo(wm) {
+  const r = wm.slot.getBoundingClientRect();
+  gsap.set(wm.logo, {left: r.left, top: r.top, scale: 0, transformOrigin: '50% 50%'});
+  return r;
+}
+function bar(css, color) {
+  const b = E('div', 'position:absolute;background:' + color + ';' + css);
+  gsap.set(b, {scaleX: 0, transformOrigin: '0% 50%'});
+  return b;
+}
+function counter(el, from, to, fmt) {
+  const o = {v: from};
+  renderers.push(() => { el.textContent = fmt(o.v); });
+  return o;
+}
+const fmtInt = v => Math.round(v).toLocaleString('en-US');
+
+/* =============================== INTRO =============================== */
+function buildIntro() {
+  // ---- Scene A: the problem ----
+  const line = ecg(430);
+  tl.to(line.path, {strokeDashoffset: 0, duration: 1.6, ease: 'none'}, 0);
+  tl.to(line.box, {y: 420, duration: 0.8, ease: 'power3.inOut'}, 1.0);
+
+  const stats = [
+    {big: '<span id="c1">0</span> million', sub: 'people die of sepsis every year', src: 'Rudd et al., Lancet 2020', t: 1.0, out: 3.75},
+    {big: '+<span id="c2">0</span>%', sub: 'higher odds of death for every hour treatment is delayed', src: 'Seymour et al., NEJM 2017', t: 4.0, out: 6.25},
+    {big: '72-99%', sub: 'of clinical alarms are false', src: 'Sendelbach and Funk, AACN Advanced Critical Care 2013', t: 6.5, out: 9.0},
+  ];
+  stats.forEach(s => {
+    const b = M('left:160px;top:110px;height:210px', s.big, null, 'font-size:190px;font-weight:500;line-height:210px;letter-spacing:-4px');
+    const u = M('left:166px;top:330px;height:72px', s.sub, null, 'font-size:56px;line-height:72px');
+    const r = M('left:168px;top:412px;height:40px', s.src, null, 'font-size:26px;line-height:40px;color:#6f6f6f;font-family:PlexMono,monospace');
+    rise(b, s.t, 0.55); rise(u, s.t + 0.25); rise(r, s.t + 0.5);
+    up(b, s.out); up(u, s.out + 0.05); up(r, s.out + 0.1);
+  });
+  const c1 = counter(document.getElementById('c1'), 0, 11, fmtInt);
+  tl.to(c1, {v: 11, duration: 0.7, ease: 'power2.out'}, 1.0);
+  const c2 = counter(document.getElementById('c2'), 0, 4, fmtInt);
+  tl.to(c2, {v: 4, duration: 0.5, ease: 'power2.out'}, 4.0);
+
+  const pills = [];
+  for (let i = 0; i < 20; i++) {
+    const p = E('div', 'position:absolute;top:520px;left:' + (166 + i * 80) + 'px;width:64px;height:40px;border-radius:20px;background:#da1e28;color:#fff;font:500 13px/40px PlexMono,monospace;text-align:center;letter-spacing:1px', 'ALARM');
+    gsap.set(p, {scale: 0});
+    pop(p, 6.75 + i * 0.04, 0.35, 1.4);
+    pills.push(p);
+  }
+  const fake = [...Array(20).keys()].filter(i => i !== 5 && i !== 14);
+  fake.forEach((i, k) => tl.to(pills[i], {backgroundColor: '#c6c6c6', color: '#8d8d8d', duration: 0.2, ease: 'none'}, 7.75 + k * 0.035));
+  const tune = M('left:166px;top:600px;height:64px', 'So nurses learn to tune them out.', null, 'font-size:46px;line-height:64px;font-weight:500');
+  rise(tune, 8.25); up(tune, 9.0);
+  pills.forEach((p, i) => tl.to(p, {scale: 0, duration: 0.25, ease: 'power3.in'}, 9.0 + i * 0.012));
+  tl.to(line.box, {y: 0, duration: 0.5, ease: 'power3.inOut'}, 9.0);
+
+  // ---- Scene B: wordmark ----
+  tl.to(line.box, {scaleX: 0, transformOrigin: '50% 50%', duration: 0.5, ease: 'power3.in'}, 9.5);
+  const wm = wordmark(380, 150);
+  const tag = E('div', 'position:absolute;left:0;top:600px;width:1920px;display:flex;justify-content:center;gap:30px;font-size:64px;font-weight:500');
+  const words = ['Earlier', 'Fewer', 'Explained'].map(w => {
+    const m = E('div', 'overflow:hidden;height:84px', null, tag);
+    const i = E('div', 'line-height:84px', w + '<span class="blue">.</span>', m);
+    gsap.set(i, {yPercent: 115}); return i;
+  });
+  const ev = M('left:0;top:720px;width:1920px;height:44px;text-align:center', 'IBM Z Datathon 2026 &middot; Event code SSF2026 &middot; AI for Good', null, 'font:400 30px/44px PlexMono,monospace;color:#525252');
+  const wmIn = () => {
+    placeLogo(wm);
+    pop(wm.logo, 10.0, 0.5, 1.4);
+    wm.spans.forEach((s, i) => rise(s, 10.25 + i * 0.05, 0.45));
+    words.forEach((w, i) => rise(w, 11.0 + i * 0.5, 0.45));
+    rise(ev, 12.5);
+    wm.spans.forEach((s, i) => drop(s, 13.5 + i * 0.025, 0.3));
+    words.forEach((w, i) => drop(w, 13.5 + i * 0.05, 0.3));
+    drop(ev, 13.55, 0.3);
+    const r = wm.slot.getBoundingClientRect();
+    tl.to(wm.logo, {x: 56 - r.left - (wm.logoSize - 56) / 2, y: 40 - r.top - (wm.logoSize - 56) / 2, scale: 56 / wm.logoSize, duration: 0.6, ease: 'power3.inOut'}, 13.75);
+  };
+  const bname = M('left:128px;top:44px;height:48px', 'VitalWatch', null, 'font-size:34px;font-weight:600;line-height:48px');
+  rise(bname, 14.2);
+
+  // ---- Scene C: one shape tells the story ----
+  const Z = E('div', 'position:absolute;left:0;top:0;width:1920px;height:1080px');
+  // chart card, born from a line
+  const card = E('div', 'position:absolute;left:360px;top:538px;width:1200px;height:4px;background:#161616;border-radius:2px;overflow:hidden', null, Z);
+  gsap.set(card, {scaleX: 0});
+  tl.to(card, {scaleX: 1, duration: 0.45, ease: 'power3.out'}, 14.0);
+  tl.to(card, {top: 240, height: 600, backgroundColor: '#ffffff', borderRadius: 12, duration: 0.6, ease: 'power3.inOut'}, 14.5);
+  const ch = M('left:48px;top:36px;height:52px', 'Bed 21 &middot; sepsis risk over the last 48 hours', card, 'font-size:34px;font-weight:600;line-height:52px');
+  rise(ch, 15.0);
+  const thr = E('div', 'position:absolute;left:48px;top:270px;width:1104px;height:0;border-top:4px dashed #da1e28', null, card);
+  gsap.set(thr, {scaleX: 0, transformOrigin: '0 0'});
+  tl.to(thr, {scaleX: 1, duration: 0.5, ease: 'power2.out'}, 15.25);
+  const thl = M('left:48px;top:226px;height:36px', 'alert threshold', card, 'font:400 24px/36px PlexMono,monospace;color:#da1e28');
+  rise(thl, 15.5);
+  const xl = M('left:48px;top:540px;height:34px;width:1104px', '<span style="float:left">-48 h</span><span style="float:right">now</span>', card, 'font:400 22px/34px PlexMono,monospace;color:#6f6f6f;width:1104px');
+  rise(xl, 15.5);
+  const ys = [372,368,375,366,370,362,371,365,360,368,358,364,370,361,355,366,359,352,362,357,350,358,346,354,349,356,344,350,340,346,332,318,296,262,214,156,120];
+  const pts = ys.map((y, i) => (i * 30) + ',' + (y - 120)).join(' ');
+  const svgBox = E('div', 'position:absolute;left:48px;top:120px;width:1104px;height:430px', null, card);
+  svgBox.innerHTML = '<svg width="1104" height="430"><polyline points="' + pts + '" fill="none" stroke="#0f62fe" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/></svg>';
+  const pl = svgBox.querySelector('polyline');
+  const PL = pl.getTotalLength(); pl.style.strokeDasharray = PL; pl.style.strokeDashoffset = PL;
+  tl.to(pl, {strokeDashoffset: 0, duration: 1.5, ease: 'power1.inOut'}, 15.5);
+
+  // the alert dot becomes the pill, then the card
+  const pill = E('div', 'position:absolute;left:1474px;top:226px;width:28px;height:28px;border-radius:14px;background:#da1e28;border:0 solid #da1e28;overflow:hidden', null, Z);
+  gsap.set(pill, {scale: 0});
+  // dot sits on the last chart point: card(360,240)+svg(48,120)+point(1080,0)
+  gsap.set(pill, {left: 360 + 48 + 1080 - 14, top: 240 + 120 + 0 - 14});
+  pop(pill, 17.0, 0.35, 1.8);
+  tl.to(card, {top: 538, height: 4, backgroundColor: '#161616', borderRadius: 2, duration: 0.4, ease: 'power3.in'}, 17.5);
+  tl.to(card, {scaleX: 0, duration: 0.3, ease: 'power3.in'}, 17.9);
+  tl.to(pill, {left: 660, top: 485, width: 600, height: 110, borderRadius: 55, backgroundColor: '#ffffff', borderWidth: 3, duration: 0.65, ease: 'back.out(1.15)'}, 17.5);
+  const pc = E('div', 'position:absolute;left:0;top:0;width:1000px;height:740px', null, pill);
+  const icon = E('div', 'position:absolute;left:24px;top:24px;width:56px;height:56px;border-radius:28px;background:#da1e28;overflow:hidden', null, pc);
+  gsap.set(icon, {scale: 0});
+  const iBang = E('div', 'position:absolute;left:0;top:0;width:56px;height:56px;color:#fff;font:700 36px/56px Plex;text-align:center', '!', icon);
+  const iChk = E('div', 'position:absolute;left:0;top:0;width:56px;height:56px;text-align:center;padding-top:10px', checkSvg('#ffffff', 34), icon);
+  gsap.set(iChk, {yPercent: 115});
+  pop(icon, 18.05, 0.35, 1.6);
+  const pt = M('left:100px;top:12px;height:50px', 'Bed 21 &middot; risk 15%', pc, 'font-size:38px;font-weight:600;line-height:50px');
+  const ps = M('left:100px;top:60px;height:34px', 'crossed the alert threshold', pc, 'font-size:24px;line-height:34px;color:#525252');
+  rise(pt, 18.15); rise(ps, 18.3);
+  tl.to(pill, {left: 460, top: 170, width: 1000, height: 740, borderRadius: 12, duration: 0.6, ease: 'power3.inOut'}, 19.0);
+
+  // reasons, then the SBAR note, in one mask
+  const area = E('div', 'position:absolute;left:0;top:120px;width:1000px;height:500px;overflow:hidden', null, pc);
+  const rIn = E('div', 'position:absolute;left:0;top:0;width:1000px;height:500px', null, area);
+  const sIn = E('div', 'position:absolute;left:0;top:0;width:1000px;height:500px', null, area);
+  gsap.set(sIn, {yPercent: 100});
+  const rt = M('left:40px;top:6px;height:46px', 'Why VitalWatch is concerned', rIn, 'font-size:32px;font-weight:600;line-height:46px');
+  rise(rt, 19.5);
+  const rows = [['Heart rate', '125 bpm, up 27 in 6 h', 1.0], ['Temperature', '38.5 &deg;C', 0.72], ['Respiratory rate', '25 /min', 0.4]];
+  rows.forEach((r, i) => {
+    const y = 80 + i * 112, t = 20.0 + i * 0.5;
+    const a = M('left:40px;top:' + y + 'px;height:46px', r[0], rIn, 'font-size:34px;font-weight:600;line-height:46px');
+    const b = M('left:40px;top:' + (y + 46) + 'px;height:40px', r[1], rIn, 'font-size:28px;line-height:40px;color:#525252');
+    const tk = E('div', 'position:absolute;left:660px;top:' + (y + 34) + 'px;width:300px;height:16px;background:#e0e0e0', null, rIn);
+    gsap.set(tk, {scaleX: 0, transformOrigin: '0 50%'}); tl.to(tk, {scaleX: 1, duration: 0.35, ease: 'power3.out'}, t);
+    const f = bar('left:660px;top:' + (y + 34) + 'px;width:' + Math.round(300 * r[2]) + 'px;height:16px', '#0f62fe');
+    rIn.appendChild(f);
+    rise(a, t); rise(b, t + 0.1);
+    tl.to(f, {scaleX: 1, duration: 0.5, ease: 'power3.out'}, t + 0.1);
+  });
+  const rf = M('left:40px;top:430px;height:36px', 'Exact per-patient contributions from the model (TreeSHAP)', rIn, 'font-size:24px;line-height:36px;color:#6f6f6f');
+  rise(rf, 21.5);
+  tl.to(rIn, {yPercent: -100, duration: 0.5, ease: 'power3.inOut'}, 22.5);
+  tl.to(sIn, {yPercent: 0, duration: 0.5, ease: 'power3.inOut'}, 22.5);
+  E('div', 'position:absolute;left:40px;top:6px;font-size:32px;font-weight:600;line-height:46px', 'Handoff note (SBAR)', sIn);
+  const noteText = 'S: Bed 21, 50-59, SICU. Sepsis risk 15%, crossed the alert threshold.\n' +
+    'B: Heart rate 125 bpm, up 27 in 6 h; temperature 38.5 °C; respiratory rate 25 /min.\n' +
+    'A: Possible early deterioration. Decision support, not a diagnosis.\n' +
+    'R: Bedside review now; follow the unit sepsis protocol.';
+  const note = E('div', 'position:absolute;left:40px;top:66px;width:920px;font:400 25px/37px PlexMono,monospace;white-space:pre-wrap;color:#262626', '', sIn);
+  const ty = {n: 0};
+  renderers.push(() => { const n = Math.floor(ty.n); note.textContent = noteText.slice(0, n) + (n > 0 && n < noteText.length ? '|' : ''); });
+  tl.to(ty, {n: noteText.length, duration: 2.6, ease: 'none'}, 23.0);
+  const gr = M('left:40px;top:432px;height:36px', 'IBM Granite, running locally, drafts a richer note that is checked against the facts.', sIn, 'font-size:24px;line-height:36px;color:#6f6f6f');
+  rise(gr, 25.6);
+
+  // acknowledge
+  const btn = E('div', 'position:absolute;left:40px;top:636px;width:920px;height:68px;background:#0f62fe;overflow:hidden', null, pc);
+  gsap.set(btn, {scaleY: 0, transformOrigin: '50% 100%'});
+  const b1 = M('left:24px;top:0;height:68px', 'Acknowledge alert', btn, 'font-size:28px;line-height:68px;color:#fff;font-weight:500');
+  const b2 = M('left:24px;top:0;height:68px', checkSvg('#ffffff', 30) + '&nbsp; Acknowledged, snoozed 4 h', btn, 'font-size:28px;line-height:68px;color:#fff;font-weight:500');
+  tl.to(btn, {scaleY: 1, duration: 0.4, ease: 'back.out(1.3)'}, 26.0);
+  rise(b1, 26.15);
+  const cur = cursor();
+  tl.to(cur, {x: 940, y: 836, duration: 0.85, ease: 'power2.inOut'}, 26.1);
+  tl.to(cur, {scale: 0.82, duration: 0.08, yoyo: true, repeat: 1, ease: 'power1.inOut'}, 27.0);
+  tl.to(btn, {scale: 0.97, duration: 0.08, yoyo: true, repeat: 1, ease: 'power1.inOut'}, 27.0);
+  tl.to(btn, {backgroundColor: '#161616', duration: 0.15, ease: 'none'}, 27.1);
+  up(b1, 27.1, 0.25); rise(b2, 27.2, 0.4);
+  tl.to(pill, {borderColor: '#0f62fe', duration: 0.2, ease: 'none'}, 27.2);
+  tl.to(icon, {backgroundColor: '#0f62fe', duration: 0.2, ease: 'none'}, 27.2);
+  up(iBang, 27.2, 0.25); rise(iChk, 27.3, 0.4);
+  tl.to(cur, {x: 1760, y: 1120, duration: 0.6, ease: 'power2.in'}, 27.5);
+
+  // shrink into an audit block
+  tl.to(pc, {y: -780, duration: 0.35, ease: 'power3.in'}, 28.0);
+  tl.to(pill, {left: 1160, top: 430, width: 240, height: 150, borderRadius: 10, duration: 0.5, ease: 'power3.inOut'}, 28.1);
+  const pb = E('div', 'position:absolute;left:0;top:0;width:240px;height:150px', null, pill);
+  const pb1 = M('left:20px;top:14px;height:46px', '#8', pb, 'font:500 34px/46px PlexMono,monospace');
+  const pb2 = M('left:20px;top:62px;height:34px', 'acknowledged', pb, 'font-size:24px;line-height:34px');
+  const pb3 = M('left:20px;top:98px;height:30px', 'sealed', pb, 'font:400 20px/30px PlexMono,monospace;color:#0f62fe');
+  rise(pb1, 28.6); rise(pb2, 28.7); rise(pb3, 28.8);
+  const blocks = [['#6', 'alert', 520], ['#7', 'note', 840]].map(([n, w, x], i) => {
+    const b = E('div', 'position:absolute;left:' + x + 'px;top:430px;width:240px;height:150px;background:#fff;border:3px solid #161616;border-radius:10px', null, Z);
+    E('div', 'position:absolute;left:20px;top:14px;font:500 34px/46px PlexMono,monospace', n, b);
+    E('div', 'position:absolute;left:20px;top:62px;font-size:24px;line-height:34px', w, b);
+    E('div', 'position:absolute;left:20px;top:98px;font:400 20px/30px PlexMono,monospace;color:#0f62fe', 'sealed', b);
+    gsap.set(b, {scale: 0}); pop(b, 28.5 + i * 0.25, 0.4);
+    return b;
+  });
+  const links = [760, 1080].map((x, i) => {
+    const l = bar('left:' + x + 'px;top:503px;width:80px;height:4px', '#161616'); Z.appendChild(l);
+    tl.to(l, {scaleX: 1, duration: 0.25, ease: 'power2.out'}, 29.0 + i * 0.15);
+    return l;
+  });
+  const capA = M('left:0;top:640px;width:1920px;height:58px;text-align:center', 'Every alert, note and acknowledgement is sealed in a hash chain', Z, 'font-size:40px;line-height:58px');
+  rise(capA, 29.25);
+
+  // become a bed tile in a 24-bed ward
+  drop(capA, 30.0, 0.3);
+  blocks.concat(links).forEach((b, i) => { tl.to(b, {y: 760, duration: 0.45, ease: 'power3.in'}, 30.0 + i * 0.04); tl.set(b, {visibility: 'hidden'}, 30.6); });
+  up(pb1, 30.0, 0.25); up(pb2, 30.03, 0.25); up(pb3, 30.06, 0.25);
+  const GX = 230, GY = 220, TW = 230, TH = 150, GAP = 16;
+  const tpos = i => [GX + (i % 6) * (TW + GAP), GY + Math.floor(i / 6) * (TH + GAP)];
+  const [x21, y21] = tpos(20);
+  tl.to(pill, {left: x21, top: y21, width: TW, height: TH, borderRadius: 8, borderWidth: 2, duration: 0.6, ease: 'power3.inOut'}, 30.1);
+  const t21 = E('div', 'position:absolute;left:0;top:0;width:230px;height:150px', null, pill);
+  const t21a = M('left:16px;top:10px;height:34px', 'Bed 21', t21, 'font-size:24px;font-weight:600;line-height:34px');
+  const t21b = M('left:16px;top:46px;height:60px', '15%', t21, 'font-size:46px;line-height:60px');
+  const t21c = M('left:16px;top:108px;height:28px', 'snoozed 4 h', t21, 'font:400 19px/28px PlexMono,monospace;color:#0f62fe');
+  rise(t21a, 30.6); rise(t21b, 30.65); rise(t21c, 30.7);
+  const risks = ['<1%','1.2%','<1%','2.1%','<1%','4.4%','1.0%','<1%','1.6%','<1%','<1%','4.7%','1.9%','<1%','<1%','1.4%','5.4%','<1%','<1%','<1%','<1%','1.3%','<1%','5.7%'];
+  const order = [...Array(24).keys()].filter(i => i !== 20).sort((a, b) => {
+    const d = i => { const [x, y] = tpos(i); return Math.hypot(x - x21, y - y21); }; return d(a) - d(b); });
+  order.forEach((i, k) => {
+    const [x, y] = tpos(i);
+    const t = E('div', 'position:absolute;left:' + x + 'px;top:' + y + 'px;width:230px;height:150px;background:#fff;border:1px solid #e0e0e0;border-radius:8px', null, Z);
+    E('div', 'position:absolute;left:16px;top:10px;font-size:24px;font-weight:600;line-height:34px', 'Bed ' + (i + 1), t);
+    E('div', 'position:absolute;left:16px;top:46px;font-size:46px;line-height:60px', risks[i], t);
+    const ys2 = [0,1,2,3,4,5,6,7].map(j => 128 - ((i * 7 + j * 13) % 9));
+    E('div', 'position:absolute;left:16px;top:112px', '<svg width="198" height="24"><polyline points="' + ys2.map((v, j) => (j * 28) + ',' + (v - 112)).join(' ') + '" fill="none" stroke="#0f62fe" stroke-width="2.5"/></svg>', t);
+    gsap.set(t, {scale: 0});
+    pop(t, 30.6 + k * 0.025, 0.35, 1.2);
+  });
+  const capB = M('left:0;top:930px;width:1920px;height:58px;text-align:center', 'A whole ward, scored in one call every hour', Z, 'font-size:40px;line-height:58px');
+  rise(capB, 31.4);
+  drop(capB, 32.3, 0.25);
+
+  // zoom out to 10,000 beds
+  gsap.set(Z, {transformOrigin: '960px 554px'});
+  tl.to(Z, {scale: 0.03, duration: 0.6, ease: 'power2.inOut'}, 32.45);
+  tl.set(Z, {visibility: 'hidden'}, 33.05);
+  const cv = E('canvas', 'position:absolute;left:0;top:0', null);
+  cv.width = 1920; cv.height = 1080;
+  const ctx = cv.getContext('2d');
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const dots = [];
+  for (let r = 0; r < 80; r++) for (let c = 0; c < 125; c++) {
+    const x = 104 + c * 13.9, y = 150 + r * 10.4;
+    dots.push({x, y, tx: 820 + rnd() * 280, ty: 380 + rnd() * 280, red: rnd() < 0.006, d: Math.hypot(x - 960, y - 560)});
+  }
+  const DV = {p: 0, q: 0, a: 1};
+  renderers.push(() => {
+    ctx.clearRect(0, 0, 1920, 1080);
+    if (DV.p <= 0 || DV.a <= 0) return;
+    const R = DV.p * 1150; const q = DV.q;
+    ctx.globalAlpha = DV.a;
+    for (const o of dots) {
+      if (o.d > R) continue;
+      const x = o.x + (o.tx - o.x) * q, y = o.y + (o.ty - o.y) * q;
+      ctx.fillStyle = o.red ? '#da1e28' : '#161616';
+      ctx.beginPath(); ctx.arc(x, y, o.red ? 3.4 : 2.6, 0, 6.2832); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  });
+  tl.to(DV, {p: 1, duration: 0.7, ease: 'power2.out'}, 33.0);
+  const lab = E('div', 'position:absolute;left:0;top:430px;width:1920px;text-align:center');
+  const labIn = E('div', 'display:inline-block;background:#f4f4f4;padding:6px 48px 14px;overflow:hidden', null, lab);
+  const labT = E('div', 'font-size:128px;font-weight:500;line-height:150px;letter-spacing:-3px', '<span id="c10k">24</span> beds', labIn);
+  const labS = E('div', 'font-size:40px;line-height:54px;color:#525252;text-align:center', 'scored together, every hour', labIn);
+  gsap.set(lab, {scale: 0, transformOrigin: '50% 50%'});
+  pop(lab, 33.05, 0.4, 1.2);
+  const ck = counter(document.getElementById('c10k'), 24, 10000, fmtInt);
+  tl.to(ck, {v: 10000, duration: 0.75, ease: 'power2.out'}, 33.05);
+  tl.to(lab, {scale: 0, duration: 0.3, ease: 'power3.in'}, 34.0);
+  tl.to(DV, {q: 1, duration: 0.8, ease: 'power3.inOut'}, 34.0);
+
+  // the chip
+  const chip = E('div', 'position:absolute;left:810px;top:370px;width:300px;height:300px;border-radius:20px;background:#161616');
+  gsap.set(chip, {scale: 0, transformOrigin: '50% 50%'});
+  tl.to(chip, {scale: 1, duration: 0.4, ease: 'back.out(1.3)'}, 34.55);
+  tl.set(DV, {a: 0}, 34.9);
+  for (let k = 0; k < 6; k++) {
+    [[810 - 26, 400 + k * 46, 26, 10], [1110, 400 + k * 46, 26, 10], [840 + k * 46, 370 - 26, 10, 26], [840 + k * 46, 670, 10, 26]].forEach(([x, y, w, h], s) => {
+      const p = E('div', 'position:absolute;left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px;background:#161616');
+      gsap.set(p, {scale: 0}); pop(p, 34.8 + k * 0.02 + s * 0.01, 0.25, 1.2);
+    });
+  }
+  const chT = M('left:810px;top:452px;width:300px;height:56px;text-align:center', 'IBM Telum', null, 'font-size:44px;font-weight:600;line-height:56px;color:#fff');
+  const chS = M('left:810px;top:512px;width:300px;height:76px;text-align:center', 'on-chip AI<br>accelerator', null, 'font-size:26px;line-height:38px;color:#c6c6c6;white-space:normal');
+  rise(chT, 34.9); rise(chS, 35.0);
+  const labels = [
+    {txt: 'IBM LinuxONE', css: 'right:1180px;top:486px', line: 'left:740px;top:518px;width:44px;height:4px', t: 35.0},
+    {txt: 'IBM Snap ML', css: 'left:1180px;top:486px', line: 'left:1136px;top:518px;width:44px;height:4px', t: 35.4},
+    {txt: 'IBM Granite (local)', css: 'left:0;right:0;margin:auto;width:340px;top:740px;text-align:center', line: 'left:958px;top:696px;width:4px;height:44px', t: 35.8},
+  ];
+  labels.forEach(l => {
+    const ln = E('div', 'position:absolute;background:#161616;' + l.line);
+    gsap.set(ln, {scale: 0}); pop(ln, l.t, 0.25, 1);
+    const el = E('div', 'position:absolute;' + l.css + ';background:#fff;border:2px solid #161616;border-radius:40px;padding:10px 30px;font-size:34px;font-weight:500;line-height:48px;white-space:nowrap', l.txt);
+    gsap.set(el, {scale: 0, transformOrigin: '50% 50%'}); pop(el, l.t + 0.05, 0.45, 1.4);
+  });
+  const live = M('left:0;top:880px;width:1920px;height:84px;text-align:center', 'Let’s see it live<span class="blue">.</span>', null, 'font-size:62px;font-weight:500;line-height:84px');
+  rise(live, 36.25);
+  tl.to(chip, {scale: 1.04, duration: 0.12, yoyo: true, repeat: 1, ease: 'power1.inOut'}, 36.75);
+  tl.to(chip, {scale: 1.04, duration: 0.12, yoyo: true, repeat: 1, ease: 'power1.inOut'}, 37.25);
+  tl.to({}, {duration: 0.01}, 37.49);
+  return wmIn;
+}
+
+/* =============================== OUTRO =============================== */
+function buildOutro() {
+  const b = brand(0, true);
+  // ---- O1 results ----
+  const t1 = M('left:160px;top:150px;height:84px', 'More septic patients flagged early, with fewer alarms', null, 'font-size:62px;font-weight:500;line-height:84px');
+  rise(t1, 0.3);
+  const rowsR = [
+    {name: 'qSOFA &ge; 2', alerts: 63, pct: 47, color: '#8d8d8d', top: 330, t: 1.0},
+    {name: 'VitalWatch', alerts: 50, pct: 60, color: '#0f62fe', top: 520, t: 1.6},
+  ];
+  const exitR = [];
+  rowsR.forEach(r => {
+    const lbl = M('left:160px;top:' + r.top + 'px;height:52px', r.name, null, 'font-size:38px;font-weight:600;line-height:52px');
+    const bw = Math.round(1000 * r.pct / 100);
+    const br = bar('left:160px;top:' + (r.top + 60) + 'px;width:' + bw + 'px;height:80px', r.color);
+    const val = M('left:' + (160 + bw + 24) + 'px;top:' + (r.top + 62) + 'px;height:80px', '<span>0</span>%', null, 'font-size:68px;font-weight:500;line-height:80px');
+    const al = M('left:160px;top:' + (r.top + 148) + 'px;height:40px', '<span>0</span> alerts per 100 patient-days', null, 'font:400 28px/40px PlexMono,monospace;color:#525252');
+    rise(lbl, r.t);
+    tl.to(br, {scaleX: 1, duration: 0.8, ease: 'power3.out'}, r.t + 0.1);
+    rise(val, r.t + 0.15, 0.4);
+    const cv = counter(val.querySelector('span'), 0, r.pct, fmtInt); tl.to(cv, {v: r.pct, duration: 0.8, ease: 'power3.out'}, r.t + 0.1);
+    rise(al, 2.6 + (r.t - 1.0) * 0.5);
+    const ca = counter(al.querySelector('span'), 0, r.alerts, fmtInt); tl.to(ca, {v: r.alerts, duration: 0.6, ease: 'power2.out'}, 2.6 + (r.t - 1.0) * 0.5);
+    exitR.push(lbl, val, al);
+    tl.to(br, {scaleX: 0, duration: 0.4, ease: 'power3.in'}, 7.0);
+  });
+  const fl = M('left:160px;top:270px;height:40px', 'share of septic patients flagged before onset', null, 'font:400 26px/40px PlexMono,monospace;color:#6f6f6f');
+  rise(fl, 0.7);
+  const h3 = M('left:1400px;top:390px;height:190px', '3 h', null, 'font-size:170px;font-weight:500;line-height:190px;color:#0f62fe;letter-spacing:-4px');
+  const h3s = M('left:1406px;top:584px;height:96px', 'median warning<br>before onset', null, 'font-size:38px;line-height:48px;white-space:normal');
+  rise(h3, 4.0, 0.55); rise(h3s, 4.25);
+  const fn1 = M('left:160px;top:960px;height:38px', 'Held-out synthetic test patients. Settings chosen on validation patients, reported once on test.', null, 'font:400 24px/38px PlexMono,monospace;color:#6f6f6f');
+  rise(fn1, 5.0);
+  [t1, fl, h3, h3s, fn1].concat(exitR).forEach((e, i) => up(e, 7.0 + i * 0.02, 0.35));
+
+  // ---- O2 benchmark race ----
+  const t2 = M('left:160px;top:150px;height:84px', 'Same model. Faster engine. Identical decisions.', null, 'font-size:62px;font-weight:500;line-height:84px');
+  rise(t2, 7.5);
+  const fl2 = M('left:160px;top:270px;height:40px', 'time to score one patient', null, 'font:400 26px/40px PlexMono,monospace;color:#6f6f6f');
+  rise(fl2, 7.8);
+  const U = 0.02; // seconds of animation per microsecond
+  const lanes = [
+    {name: 'XGBoost', us: 143, color: '#8d8d8d', top: 340},
+    {name: 'IBM Snap ML', us: 13, color: '#0f62fe', top: 460},
+  ];
+  const exitB = [t2, fl2];
+  lanes.forEach(l => {
+    const lbl = M('left:160px;top:' + (l.top + 12) + 'px;height:56px', l.name, null, 'font-size:38px;font-weight:600;line-height:56px');
+    const tr = E('div', 'position:absolute;left:520px;top:' + l.top + 'px;width:1000px;height:80px;background:#e0e0e0');
+    gsap.set(tr, {scaleX: 0, transformOrigin: '0 50%'});
+    const fill = bar('left:520px;top:' + l.top + 'px;width:' + Math.round(1000 * l.us / 143) + 'px;height:80px', l.color);
+    const val = M('left:' + (520 + Math.round(1000 * l.us / 143) + 24) + 'px;top:' + (l.top + 6) + 'px;height:70px', '<span>0</span> &micro;s', null, 'font-size:56px;font-weight:500;line-height:70px');
+    rise(lbl, 8.0); tl.to(tr, {scaleX: 1, duration: 0.4, ease: 'power3.out'}, 8.0);
+    rise(val, 8.4, 0.3);
+    tl.to(fill, {scaleX: 1, duration: l.us * U, ease: 'none'}, 8.5);
+    const cv = counter(val.querySelector('span'), 0, l.us, fmtInt); tl.to(cv, {v: l.us, duration: l.us * U, ease: 'none'}, 8.5);
+    exitB.push(lbl, val);
+    tl.to([tr, fill], {scaleX: 0, duration: 0.4, ease: 'power3.in'}, 15.0);
+  });
+  const x11 = M('left:520px;top:590px;height:70px', '11x faster', null, 'font-size:56px;font-weight:600;line-height:70px;color:#0f62fe');
+  rise(x11, 11.5);
+  const same = E('div', 'position:absolute;left:880px;top:594px;height:62px;border:2px solid #161616;border-radius:31px;padding:0 28px;font-size:30px;line-height:58px;background:#fff;white-space:nowrap', checkSvg('#0f62fe', 28) + '&nbsp; 100% identical alert decisions');
+  gsap.set(same, {scale: 0, transformOrigin: '0% 50%'}); pop(same, 12.0, 0.45, 1.4);
+  const ms = M('left:520px;top:720px;height:120px', '<span>0</span> ms', null, 'font-size:104px;font-weight:500;line-height:120px;color:#0f62fe;letter-spacing:-2px');
+  const mss = M('left:930px;top:752px;height:96px', 'to process 10,000 beds<br>for one ward-hour, on one process', null, 'font-size:34px;line-height:46px;white-space:normal');
+  rise(ms, 13.0, 0.5); rise(mss, 13.2);
+  const cms = counter(ms.querySelector('span'), 0, 277, fmtInt); tl.to(cms, {v: 277, duration: 0.8, ease: 'power2.out'}, 13.0);
+  const fn2 = M('left:160px;top:960px;height:38px', 'Measured on an x86 reference machine with 4 cores, not IBM Z.', null, 'font:400 24px/38px PlexMono,monospace;color:#6f6f6f');
+  rise(fn2, 14.0);
+  exitB.push(x11, ms, mss, fn2);
+  exitB.forEach((e, i) => up(e, 15.0 + i * 0.02, 0.35));
+  tl.to(same, {scale: 0, duration: 0.3, ease: 'power3.in'}, 15.0);
+
+  // ---- O3 audit chain ----
+  const t3 = M('left:160px;top:150px;height:84px', 'Tamper-evident by design', null, 'font-size:62px;font-weight:500;line-height:84px');
+  rise(t3, 15.5);
+  const blks = [];
+  for (let i = 0; i < 5; i++) {
+    const x = 160 + i * 330;
+    const bk = E('div', 'position:absolute;left:' + x + 'px;top:340px;width:260px;height:170px;background:#fff;border:3px solid #161616;border-radius:10px;overflow:hidden');
+    E('div', 'position:absolute;left:22px;top:18px;font:500 40px/52px PlexMono,monospace', '#' + (i + 1), bk);
+    const w = E('div', 'position:absolute;left:22px;top:78px;width:220px;height:40px;overflow:hidden', null, bk);
+    const s1 = E('div', 'font-size:28px;line-height:40px', ['alert', 'note', 'ack', 'alert', 'note'][i], w);
+    const s2 = E('div', 'font-size:28px;line-height:40px;color:#da1e28;font-weight:600', 'edited', w);
+    gsap.set(s2, {yPercent: 115}); gsap.set(s2, {position: 'absolute', top: 0, left: 0});
+    E('div', 'position:absolute;left:22px;top:122px;font:400 22px/32px PlexMono,monospace;color:#0f62fe', 'HMAC sealed', bk);
+    gsap.set(bk, {scale: 0}); pop(bk, 16.0 + i * 0.15, 0.4);
+    blks.push({bk, s1, s2});
+    if (i < 4) {
+      const ln = bar('left:' + (x + 260) + 'px;top:423px;width:70px;height:4px', '#161616');
+      tl.to(ln, {scaleX: 1, duration: 0.2, ease: 'power2.out'}, 16.8 + i * 0.1);
+      blks[i].link = ln;
+    }
+  }
+  const cur = cursor();
+  tl.to(cur, {x: 650, y: 432, duration: 0.9, ease: 'power2.inOut'}, 17.2);
+  tl.to(cur, {scale: 0.82, duration: 0.08, yoyo: true, repeat: 1, ease: 'power1.inOut'}, 18.2);
+  up(blks[1].s1, 18.3, 0.2); rise(blks[1].s2, 18.4, 0.3);
+  tl.to(blks[1].bk, {borderColor: '#da1e28', backgroundColor: '#fff1f1', duration: 0.2, ease: 'none'}, 18.75);
+  tl.to([blks[1].link, blks[0].link], {backgroundColor: '#da1e28', duration: 0.2, ease: 'none'}, 18.75);
+  tl.to(blks[1].link, {scaleX: 0.25, duration: 0.3, ease: 'power3.out'}, 18.9);
+  tl.to(cur, {x: 1760, y: 1120, duration: 0.6, ease: 'power2.in'}, 19.0);
+  const term = E('div', 'position:absolute;left:160px;top:590px;width:1600px;height:190px;background:#161616;border-radius:8px;overflow:hidden');
+  gsap.set(term, {scaleY: 0, transformOrigin: '50% 0%'});
+  tl.to(term, {scaleY: 1, duration: 0.35, ease: 'power3.out'}, 19.0);
+  const cmd = '$ python -m vitalwatch audit verify';
+  const cl = E('div', 'position:absolute;left:40px;top:34px;font:400 32px/48px PlexMono,monospace;color:#78a9ff;white-space:pre', '', term);
+  const tc = {n: 0}; renderers.push(() => { cl.textContent = cmd.slice(0, Math.floor(tc.n)); });
+  tl.to(tc, {n: cmd.length, duration: 0.8, ease: 'none'}, 19.3);
+  const out = M('left:40px;top:100px;height:48px', '{ "ok": <span class="red">false</span>, "first_bad_seq": <span class="red">2</span>, "reason": "record was modified (seal mismatch)" }', term, 'font:400 30px/48px PlexMono,monospace;color:#e0e0e0');
+  rise(out, 20.3, 0.35);
+  const h = M('left:160px;top:860px;height:62px', 'Edit one record and verification names it: record 2.', null, 'font-size:46px;font-weight:500;line-height:62px');
+  rise(h, 20.8);
+  [t3, out, h].forEach((e, i) => up(e, 22.0 + i * 0.03, 0.35));
+  tl.to(term, {scaleY: 0, duration: 0.35, ease: 'power3.in'}, 22.05);
+  blks.forEach((o, i) => { const els = o.link ? [o.bk, o.link] : [o.bk]; tl.to(els, {y: 800, duration: 0.45, ease: 'power3.in'}, 22.0 + i * 0.04); tl.set(els, {visibility: 'hidden'}, 22.7); });
+
+  // ---- O4 why IBM Z ----
+  const t4 = M('left:160px;top:150px;height:84px', 'Why IBM Z: AI next to the data', null, 'font-size:62px;font-weight:500;line-height:84px');
+  rise(t4, 22.5);
+  const cards = [
+    {img: '../../assets/deck/ibm--z17-blue.png', h: 'On-chip AI', p: 'IBM Snap ML runs the same model on the IBM Telum accelerator, with identical alert decisions.'},
+    {img: '../../assets/deck/ai--privacy-blue.png', h: 'Local generative AI', p: 'IBM Granite drafts notes on the same system. No patient data leaves it.'},
+    {img: '../../assets/deck/linuxone-5-blue.png', h: 'Built for big-endian', p: 'Model files are portable, with 256 golden predictions to re-check them on IBM Z.'},
+  ];
+  const cardEls = cards.map((c, i) => {
+    const el = E('div', 'position:absolute;left:' + (160 + i * 550) + 'px;top:320px;width:500px;height:500px;background:#fff;border-top:8px solid #0f62fe;padding:44px 40px');
+    E('img', 'width:120px;height:120px;display:block', null, el).src = c.img;
+    E('div', 'font-size:40px;font-weight:600;line-height:52px;margin-top:28px', c.h, el);
+    E('div', 'font-size:30px;line-height:42px;color:#525252;margin-top:14px', c.p, el);
+    gsap.set(el, {scale: 0.9, y: 120, clipPath: 'inset(100% 0 0 0)'});
+    tl.to(el, {scale: 1, y: 0, clipPath: 'inset(0% 0 0 0)', duration: 0.55, ease: 'back.out(1.2)'}, 23.0 + i * 0.5);
+    return el;
+  });
+  up(t4, 28.0, 0.35);
+  cardEls.forEach((el, i) => tl.to(el, {scaleY: 0.008, duration: 0.4, ease: 'power3.in'}, 28.0 + i * 0.05));
+  up(b.name, 28.0, 0.3); tl.to(b.logo, {scale: 0, duration: 0.3, ease: 'power3.in'}, 28.0);
+  cardEls.forEach(el => tl.set(el, {visibility: 'hidden'}, 28.5));
+
+  // ---- O5 end card ----
+  const line = ecg(460);
+  tl.to(line.path, {strokeDashoffset: 0, duration: 0.8, ease: 'power2.out'}, 28.45);
+  tl.to(line.box, {scaleX: 0, transformOrigin: '50% 50%', duration: 0.45, ease: 'power3.in'}, 29.3);
+  const wm = wordmark(300, 130);
+  const tag = M('left:0;top:540px;width:1920px;height:64px;text-align:center', 'Earlier, fewer, explained alerts, without exposing patient data.', null, 'font-size:46px;font-weight:500;line-height:64px');
+  const repo = M('left:0;top:640px;width:1920px;height:56px;text-align:center', 'github.com/Ritesh-Root/BM-Z-Datathon-2026', null, 'font:500 38px/56px PlexMono,monospace;color:#0f62fe');
+  const foot = M('left:0;top:760px;width:1920px;height:44px;text-align:center', 'Decision support, not a diagnosis &middot; IBM Z Datathon 2026 &middot; SSF2026', null, 'font-size:30px;line-height:44px;color:#525252');
+  return () => {
+    placeLogo(wm);
+    pop(wm.logo, 29.7, 0.5, 1.4);
+    wm.spans.forEach((s, i) => rise(s, 29.9 + i * 0.05, 0.45));
+    rise(tag, 30.75); rise(repo, 31.25); rise(foot, 31.75);
+    tl.to(wm.logo, {scale: 1.06, duration: 0.12, yoyo: true, repeat: 1, ease: 'power1.inOut'}, 32.5);
+    tl.to(wm.logo, {scale: 1.06, duration: 0.12, yoyo: true, repeat: 1, ease: 'power1.inOut'}, 33.0);
+    tl.to({}, {duration: 0.01}, 33.99);
+  };
+}
+
+const after = PART === 'outro' ? buildOutro() : buildIntro();
+window.seekTo = t => { tl.seek(t, false); renderers.forEach(f => f()); };
+window.duration = () => tl.duration();
+document.fonts.ready.then(() => {
+  const imgs = [...document.images].map(i => i.complete ? 0 : new Promise(r => { i.onload = i.onerror = r; }));
+  return Promise.all(imgs);
+}).then(() => { after(); window.seekTo(0); window.ready = true; });
+</script>
+</body>
+</html>

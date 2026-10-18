@@ -9,7 +9,7 @@ IBM Z Datathon 2026 &middot; Event code <b>SSF2026</b> &middot; Track: <b>Real-T
 </p>
 
 <p align="center">
-<a href="docs/submission/VitalWatch_demo.mp4"><b>Demo video (2 min 58 s)</b></a> &middot; <a href="docs/submission/VitalWatch_deck.pdf"><b>Pitch deck (PDF)</b></a> &middot; <a href="docs/SUBMISSION.md">Submission text</a>
+<a href="docs/submission/VitalWatch_demo.mp4"><b>Demo video (2 min 49 s)</b></a> &middot; <a href="docs/submission/VitalWatch_deck.pdf"><b>Pitch deck (PDF)</b></a> &middot; <a href="docs/SUBMISSION.md">Submission text</a>
 </p>
 
 > **Project status at a glance**
