@@ -12,35 +12,43 @@ Everything below is final and can be submitted from a phone. Copy each field int
 
 To download a file on a phone: open its link on GitHub, then tap the download button (or "View raw").
 
-## Form fields
+## Form fields (in the order the hack2skill form asks)
+
+Each answer is under the form's 1024-character limit.
+
+**Challenges:** Real-Time AI for Critical Decisions
+
+**What is the Problem you are trying to solve?** (845 characters)
+
+Sepsis is the body's extreme response to an infection. It caused about 11 million deaths worldwide in one year (Rudd et al., Lancet 2020), and every hour of delayed treatment raises the odds of dying by about 4% (Seymour et al., NEJM 2017). ICU teams must spot it hours before it becomes obvious, but they are already overwhelmed: 72% to 99% of clinical alarms are false (Sendelbach and Funk, 2013), so nurses learn to tune alarms out. Bedside scores such as NEWS2, qSOFA and SIRS either fire too late or fire too often, and they do not say why. Hospitals also cannot send patient data to an outside cloud AI service because of privacy rules. The problem we solve: give ICU nurses a sepsis warning that comes earlier, raises fewer alarms, explains itself in clinical words, and keeps every patient record inside the hospital's own secure system.
+
+**How are you planning to solve the problem? (Brief Overview)** (975 characters)
+
+VitalWatch is a real-time early-warning system for the ICU. Every hour, for every bed, it: (1) reads the newest vitals and lab results; (2) computes 142 trend features, such as 6-hour changes and time since each lab; (3) scores the whole ward in one batched call with an XGBoost model served by IBM Snap ML; (4) runs an alert policy that fires only on sustained or sharply rising risk, snoozes after a nurse acknowledges and escalates if nobody responds, to cut alarm fatigue; (5) explains each alert with exact per-patient TreeSHAP reasons in clinical words plus an SBAR handoff note, and IBM Granite drafts a richer note locally that is checked against the facts; (6) seals every alert, note and acknowledgement in an HMAC hash-chained audit log using pseudonymous IDs. A live ward dashboard (Flask, Server-Sent Events, IBM Carbon design) shows it all. Stack: Python, NumPy, pandas, XGBoost, scikit-learn, IBM Snap ML, llama.cpp. Built from scratch with 91 automated tests.
+
+**How does your solution leverage IBM Z / LinuxONE technologies?** (990 characters)
+
+VitalWatch is built to run entirely on one IBM LinuxONE system, right next to the hospital's data. (1) Telum on-chip AI accelerator: the model is served by IBM Snap ML, which runs the same XGBoost trees on the Telum accelerator through IBM zDNN; we check that alert decisions are 100% identical to XGBoost. Even on our x86 reference machine, Snap ML scores one patient in 13 microseconds vs 143 for XGBoost. (2) IBM Granite runs locally through llama.cpp with zDNN, so handoff notes need no external API and no patient data leaves the system. (3) Big-endian ready: model files are JSON and explicit-dtype arrays (no pickles), and 256 golden predictions are re-checked on s390x. (4) Scale: one process handles 10,000 beds per ward-hour in 277 ms (x86 reference), using batched scoring. (5) Security path: Secure Execution for Linux, pervasive encryption, and Crypto Express keys for the audit seals. Setup scripts for the LinuxONE Community Cloud and IBM's JupyterLab container are included.
+
+**What value does your solution deliver, and who will benefit from it?** (996 characters)
+
+Who benefits: ICU patients and their families, nurses and doctors, and hospitals. Patients: an earlier warning means earlier antibiotics and fluids, when every hour counts. On our held-out synthetic ICU cohort (PhysioNet 2019 format), VitalWatch flagged 60% of septic patients before onset vs 47% for qSOFA while raising fewer alerts (50 vs 63 per 100 patient-days), with a median of 3 hours of warning. Nurses and doctors: fewer, meaningful alarms that say why they fired and come with a ready SBAR handoff note, so less alarm fatigue and faster handovers. Hospitals: patient data never leaves their own LinuxONE system, every decision can be proven through a tamper-evident audit log, and one system can cover a whole hospital network (10,000 beds per hour). Fairness is checked by sex, age and hospital, and the model card states the limits. VitalWatch is decision support, not a diagnosis. Next steps: validation on real PhysioNet data, a silent-mode hospital trial, and HL7 FHIR integration.
+
+**Upload your pitch deck in PDF Format:** docs/submission/VitalWatch_deck.pdf (1.5 MB, under the 5 MB limit)
+
+**Github Link of your Project:** https://github.com/Ritesh-Root/BM-Z-Datathon-2026
+
+**Video Submission Link:** the YouTube (Unlisted) link of docs/submission/VitalWatch_demo.mp4
+
+**Share the link to your pitch deck in PDF Format:** https://github.com/Ritesh-Root/BM-Z-Datathon-2026/blob/ccr-8705cb7b-id6wi7/docs/submission/VitalWatch_deck.pdf
+
+## Other fields some forms ask for
 
 **Project name:** VitalWatch
 
 **Tagline:** Real-time AI for critical care decisions on IBM LinuxONE
 
 **Event code:** SSF2026
-
-**Track:** Real-Time AI for Critical Decisions (theme: AI for Good)
-
-**Repository:** https://github.com/Ritesh-Root/BM-Z-Datathon-2026
-
-### Short description (about 250 words)
-
-Event code: SSF2026. Sepsis kills about 11 million people a year, and each hour of delayed treatment raises the risk of death. Yet ICU teams face so many false alarms that most are ignored. VitalWatch is real-time AI for critical care decisions on IBM LinuxONE.
-
-Every hour it turns each ICU patient's vitals and labs into 142 trend features and scores the whole ward in one batched call. It uses IBM Snap ML, which runs the same XGBoost model on the IBM Telum on-chip AI accelerator when the system exposes it, and the alert decisions match XGBoost.
-
-An alert policy built against alarm fatigue raises fewer, earlier alerts: it waits for sustained or sharply rising risk, snoozes after a nurse responds, and escalates when nobody does.
-
-Each alert explains itself with exact per-patient contributions in clinical words. A local IBM Granite model drafts an SBAR handoff note that is checked against the facts, so patient data never leaves the machine. Every decision goes into an HMAC-sealed, hash-chained audit log with pseudonymous IDs.
-
-On a held-out synthetic ICU cohort in the PhysioNet 2019 format, VitalWatch flagged more septic patients before onset than NEWS2, qSOFA or SIRS at the same or lower alarm burden, for example 60% against 47% for qSOFA at fewer alerts. Snap ML scored one patient in 13 microseconds against 143 for XGBoost, and one process handled 10,000 beds per ward-hour in 277 ms (x86 reference). The real PhysioNet pipeline and the LinuxONE deployment scripts are included.
-
-Built from scratch during the datathon, with 91 automated tests. Decision support only, not a diagnosis.
-
-### One-line summary (if the form has a short field)
-
-Earlier, fewer and explained sepsis alerts for the ICU, scored on IBM LinuxONE with IBM Snap ML and IBM Granite, without exposing patient data.
 
 ### Technologies
 
