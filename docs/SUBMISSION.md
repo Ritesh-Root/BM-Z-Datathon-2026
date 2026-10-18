@@ -8,6 +8,7 @@ Everything below is final and can be submitted from a phone. Copy each field int
 |---|---|---|
 | Demo video (2 min 49 s, 1080p, captioned, animated intro and outro with music) | [docs/submission/VitalWatch_demo.mp4](submission/VitalWatch_demo.mp4) | If the form asks for a link, upload this file to YouTube (Unlisted) or Google Drive (anyone with the link can view) and paste that link. |
 | Pitch deck (14 slides, PDF) | [docs/submission/VitalWatch_deck.pdf](submission/VitalWatch_deck.pdf) | Upload as is. |
+| Pitch deck (PowerPoint, with speaker notes) | [docs/submission/VitalWatch_deck.pptx](submission/VitalWatch_deck.pptx) | Same 14 slides; use it to present. The form itself wants the PDF. |
 | Repository | https://github.com/Ritesh-Root/BM-Z-Datathon-2026 | The README is the project documentation. |
 
 To download a file on a phone: open its link on GitHub, then tap the download button (or "View raw").
