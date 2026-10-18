@@ -43,6 +43,12 @@ Who benefits: ICU patients and their families, nurses and doctors, and hospitals
 
 **Share the link to your pitch deck in PDF Format:** https://github.com/Ritesh-Root/BM-Z-Datathon-2026/blob/ccr-8705cb7b-id6wi7/docs/submission/VitalWatch_deck.pdf
 
+**Link to all open-source resources used:** (1009 characters)
+
+PhysioNet 2019 sepsis data https://physionet.org/content/challenge-2019/1.0.0/ | XGBoost https://github.com/dmlc/xgboost | IBM Snap ML https://snapml.readthedocs.io | IBM zDNN https://github.com/IBM/zDNN | IBM Granite https://github.com/ibm-granite | llama.cpp https://github.com/ggml-org/llama.cpp | NumPy https://numpy.org | pandas https://pandas.pydata.org | scikit-learn https://scikit-learn.org | SciPy https://scipy.org | Flask https://flask.palletsprojects.com | matplotlib https://matplotlib.org | pytest https://pytest.org | Playwright https://playwright.dev | GSAP https://www.npmjs.com/package/gsap | FFmpeg https://ffmpeg.org | IBM Carbon icons https://github.com/carbon-design-system/carbon | IBM Plex fonts https://github.com/IBM/plex | simple-icons https://github.com/simple-icons/simple-icons | LinuxONE JupyterLab ML https://github.com/linuxone-community-cloud/jupyter-lab-ml | All, with licences: https://github.com/Ritesh-Root/BM-Z-Datathon-2026/blob/ccr-8705cb7b-id6wi7/docs/OSS_CREDITS.md
+
+**Any other document (solution flowchart or architecture diagram):** https://github.com/Ritesh-Root/BM-Z-Datathon-2026/blob/ccr-8705cb7b-id6wi7/docs/ARCHITECTURE.md
+
 ## Other fields some forms ask for
 
 **Project name:** VitalWatch
