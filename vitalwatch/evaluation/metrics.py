@@ -71,8 +71,10 @@ def aggregate(results: list[PatientResult]) -> dict:
     }
 
 
-def bootstrap(results: list[PatientResult], keys=("sensitivity_early", "alerts_per_100_patient_days", "median_lead_h"),
+def bootstrap(results: list[PatientResult],
+              keys=("sensitivity_early", "alerts_per_100_patient_days", "median_lead_h", "ppv"),
               n: int = 200, seed: int = 0) -> dict:
+    """Percentile 95% CI from resampling whole patients with replacement."""
     rng = np.random.default_rng(seed)
     idx = np.arange(len(results))
     samples = {k: [] for k in keys}
@@ -84,3 +86,48 @@ def bootstrap(results: list[PatientResult], keys=("sensitivity_early", "alerts_p
                 samples[k].append(agg[k])
     return {k: [round(float(np.percentile(v, 2.5)), 3), round(float(np.percentile(v, 97.5)), 3)]
             for k, v in samples.items() if v}
+
+
+def paired_bootstrap(a: list[PatientResult], b: list[PatientResult],
+                     keys=("sensitivity_early", "alerts_per_100_patient_days"),
+                     n: int = 200, seed: int = 0) -> dict:
+    """95% CI of the difference (a minus b) between two policies run on the SAME patients.
+
+    ``a[i]`` and ``b[i]`` must be the results for patient i under each policy. The same
+    resampled patients are used for both, so the CI reflects the paired comparison and not
+    two independent estimates.
+    """
+    if len(a) != len(b):
+        raise ValueError("paired bootstrap needs the same patients in the same order")
+    rng = np.random.default_rng(seed)
+    idx = np.arange(len(a))
+    samples = {k: [] for k in keys}
+    for _ in range(n):
+        pick = rng.choice(idx, size=len(idx), replace=True)
+        agg_a = aggregate([a[i] for i in pick])
+        agg_b = aggregate([b[i] for i in pick])
+        for k in keys:
+            if agg_a[k] is not None and agg_b[k] is not None:
+                samples[k].append(agg_a[k] - agg_b[k])
+    return {k: [round(float(np.percentile(v, 2.5)), 3), round(float(np.percentile(v, 97.5)), 3)]
+            for k, v in samples.items() if v}
+
+
+def bootstrap_hourly_auc(patients_y: list[np.ndarray], patients_s: list[np.ndarray],
+                         n: int = 200, seed: int = 0) -> dict:
+    """95% CI of hourly AUROC / AUPRC from resampling whole patients (rows stay together)."""
+    from sklearn.metrics import average_precision_score, roc_auc_score
+
+    rng = np.random.default_rng(seed)
+    idx = np.arange(len(patients_y))
+    roc, pr = [], []
+    for _ in range(n):
+        pick = rng.choice(idx, size=len(idx), replace=True)
+        y = np.concatenate([patients_y[i] for i in pick])
+        s = np.concatenate([patients_s[i] for i in pick])
+        if y.min() == y.max():
+            continue
+        roc.append(roc_auc_score(y, s))
+        pr.append(average_precision_score(y, s))
+    return {"auroc": [round(float(np.percentile(roc, 2.5)), 4), round(float(np.percentile(roc, 97.5)), 4)],
+            "auprc": [round(float(np.percentile(pr, 2.5)), 4), round(float(np.percentile(pr, 97.5)), 4)]}

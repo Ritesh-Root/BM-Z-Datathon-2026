@@ -1,8 +1,8 @@
 {
- "best_iteration": 190,
+ "best_iteration": 140,
  "calibration": {
-  "a": 0.8176312515825072,
-  "b": -0.42316114918347486,
+  "a": 1.0073015292679712,
+  "b": -0.04547241563201529,
   "fitted_on": "val",
   "method": "platt"
  },
@@ -154,122 +154,122 @@
  "file": "model_xgb.json",
  "global_drivers": [
   {
-   "clinical": true,
-   "label": "SpO2",
-   "mean_abs_logit": 0.8404,
-   "var": "O2Sat"
-  },
-  {
-   "clinical": true,
-   "label": "Temperature",
-   "mean_abs_logit": 0.3375,
-   "var": "Temp"
-  },
-  {
    "clinical": false,
    "label": "Hours in ICU",
-   "mean_abs_logit": 0.3206,
+   "mean_abs_logit": 0.3728,
    "var": "ICULOS"
   },
   {
    "clinical": true,
-   "label": "Heart rate",
-   "mean_abs_logit": 0.3064,
-   "var": "HR"
+   "label": "Temperature",
+   "mean_abs_logit": 0.2563,
+   "var": "Temp"
   },
   {
    "clinical": true,
-   "label": "Mean arterial pressure",
-   "mean_abs_logit": 0.2318,
-   "var": "MAP"
+   "label": "FiO2",
+   "mean_abs_logit": 0.2245,
+   "var": "FiO2"
+  },
+  {
+   "clinical": false,
+   "label": "Hours from hospital to ICU admission",
+   "mean_abs_logit": 0.1779,
+   "var": "HospAdmTime"
   },
   {
    "clinical": true,
-   "label": "Platelets",
-   "mean_abs_logit": 0.2317,
-   "var": "Platelets"
-  },
-  {
-   "clinical": true,
-   "label": "Creatinine",
-   "mean_abs_logit": 0.2315,
-   "var": "Creatinine"
-  },
-  {
-   "clinical": true,
-   "label": "White cell count",
-   "mean_abs_logit": 0.2049,
-   "var": "WBC"
-  },
-  {
-   "clinical": true,
-   "label": "Respiratory rate",
-   "mean_abs_logit": 0.1851,
-   "var": "Resp"
-  },
-  {
-   "clinical": true,
-   "label": "Potassium",
-   "mean_abs_logit": 0.1604,
-   "var": "Potassium"
-  },
-  {
-   "clinical": true,
-   "label": "Bicarbonate",
-   "mean_abs_logit": 0.1188,
-   "var": "HCO3"
-  },
-  {
-   "clinical": true,
-   "label": "Magnesium",
-   "mean_abs_logit": 0.1146,
-   "var": "Magnesium"
-  },
-  {
-   "clinical": true,
-   "label": "Glucose",
-   "mean_abs_logit": 0.1097,
-   "var": "Glucose"
+   "label": "Lactate",
+   "mean_abs_logit": 0.1472,
+   "var": "Lactate"
   },
   {
    "clinical": true,
    "label": "Systolic BP",
-   "mean_abs_logit": 0.1078,
+   "mean_abs_logit": 0.1408,
    "var": "SBP"
   },
   {
    "clinical": true,
-   "label": "SaO2",
-   "mean_abs_logit": 0.0836,
-   "var": "SaO2"
+   "label": "NEWS2 score",
+   "mean_abs_logit": 0.1256,
+   "var": "news2"
+  },
+  {
+   "clinical": false,
+   "label": "unit",
+   "mean_abs_logit": 0.1181,
+   "var": "unit"
+  },
+  {
+   "clinical": true,
+   "label": "Mean arterial pressure",
+   "mean_abs_logit": 0.0954,
+   "var": "MAP"
+  },
+  {
+   "clinical": true,
+   "label": "Heart rate",
+   "mean_abs_logit": 0.0945,
+   "var": "HR"
+  },
+  {
+   "clinical": true,
+   "label": "White cell count",
+   "mean_abs_logit": 0.0787,
+   "var": "WBC"
+  },
+  {
+   "clinical": true,
+   "label": "SIRS criteria met",
+   "mean_abs_logit": 0.0783,
+   "var": "sirs"
+  },
+  {
+   "clinical": true,
+   "label": "BUN",
+   "mean_abs_logit": 0.0683,
+   "var": "BUN"
+  },
+  {
+   "clinical": true,
+   "label": "Bicarbonate",
+   "mean_abs_logit": 0.066,
+   "var": "HCO3"
+  },
+  {
+   "clinical": true,
+   "label": "Alkaline phosphatase",
+   "mean_abs_logit": 0.0646,
+   "var": "Alkalinephos"
   }
  ],
  "metrics": {
   "test": {
-   "auprc": 0.1153,
-   "auroc": 0.8116,
-   "positive_rate": 0.0188,
-   "rows": 25425
+   "auprc": 0.1213,
+   "auroc": 0.8427,
+   "positive_rate": 0.0181,
+   "rows": 232092
   },
   "val": {
-   "auprc": 0.0992,
-   "auroc": 0.8149,
-   "positive_rate": 0.0181,
-   "rows": 26488
+   "auprc": 0.1173,
+   "auroc": 0.8482,
+   "positive_rate": 0.0179,
+   "rows": 233818
   }
  },
  "missing_encoding": {
   "sentinel": -1000000000.0
  },
  "model": "xgboost",
- "model_sha256": "828c4ac584ca1450f9fae9468cca229e842949997df92f36ab828da1a5d7bfb5",
+ "model_sha256": "daf860cf919fc4d6a67ba50a45c964f2ff6bc0a6adede7975e44e4d98c14593f",
  "n_patients": {
-  "test": 600,
-  "train": 2800,
-  "val": 600
+  "test": 6051,
+  "train": 28235,
+  "val": 6050
  },
- "n_train_rows": 121757,
- "n_trees": 191,
+ "n_train_rows": 1086300,
+ "n_trees": 141,
  "params": {
   "colsample_bytree": 0.6,
   "eta": 0.05,
@@ -287,13 +287,13 @@
   "tree_method": "hist"
  },
  "quick": false,
- "source": "synthetic",
+ "source": "physionet",
  "spec_hash": "5948e7090183e9bf",
- "train_seconds": 5.0,
+ "train_seconds": 19.2,
  "trained_on": {
-  "arch": "x86_64",
+  "arch": "arm64",
   "numpy": "2.0.2",
-  "python": "3.12.3",
+  "python": "3.12.16",
   "xgboost": "3.4.1"
  }
 }

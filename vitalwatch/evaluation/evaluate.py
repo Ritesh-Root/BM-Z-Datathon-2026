@@ -9,6 +9,7 @@ from __future__ import annotations
 import multiprocessing as mp
 import os
 from dataclasses import replace
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -17,12 +18,17 @@ from sklearn.metrics import average_precision_score, roc_auc_score
 from ..alerts.policy import PolicyParams, raw_params, simulate_fast, threshold_crossings
 from ..data.labels import LABEL_SHIFT_H
 from ..model.artifacts import write_json
-from .metrics import aggregate, bootstrap, score_patient
+from .metrics import aggregate, bootstrap, bootstrap_hourly_auc, paired_bootstrap, score_patient
 
 TARGET_BURDEN = 30.0  # alerts per 100 patient-days (about one alert per bed every 3 days)
+N_BOOT = 1000         # patient-level bootstrap resamples behind every 95% CI
 BASELINES = {"news2": [3, 4, 5, 6, 7, 8, 9, 10, 12], "qsofa": [1, 2], "sirs": [1, 2, 3, 4]}
 BASELINE_POINTS = [("news2", 5), ("news2", 7), ("qsofa", 2), ("sirs", 2), ("sirs", 3)]
 SCORE_KEYS = ("model", "news2", "qsofa", "sirs")
+DATASETS = {
+    "physionet": "PhysioNet/Computing in Cardiology Challenge 2019, training sets A and B (v1.0.0, 40,336 ICU stays)",
+    "synthetic": "VitalWatch synthetic cohort (PhysioNet file layout; not real patients)",
+}
 
 
 def load_eval(path: str | Path) -> dict:
@@ -107,15 +113,24 @@ def raw_grid(val_scores: np.ndarray) -> list[PolicyParams]:
     return [raw_params(float(t)) for t in np.unique(np.round(qs, 5))]
 
 
-def _hourly(patients: list[dict], key: str) -> dict:
-    y, s = [], []
+def _hourly_arrays(patients: list[dict], key: str) -> tuple[list[np.ndarray], list[np.ndarray]]:
+    """Per-patient (label, score) arrays, censored like training: septic patients to onset + 3 h."""
+    ys, ss = [], []
     for pt in patients:
         n = pt["n_hours"]
         end = int(min(n - 1, pt["t_onset"] + 3)) + 1 if pt["septic"] else n
-        y.append(pt["labels"][:end])
-        s.append(pt["scores"][key][:end])
-    y, s = np.concatenate(y), np.concatenate(s)
-    return {"auroc": round(float(roc_auc_score(y, s)), 4), "auprc": round(float(average_precision_score(y, s)), 4)}
+        ys.append(pt["labels"][:end])
+        ss.append(pt["scores"][key][:end])
+    return ys, ss
+
+
+def _hourly(patients: list[dict], key: str, ci: bool = False) -> dict:
+    ys, ss = _hourly_arrays(patients, key)
+    y, s = np.concatenate(ys), np.concatenate(ss)
+    out = {"auroc": round(float(roc_auc_score(y, s)), 4), "auprc": round(float(average_precision_score(y, s)), 4)}
+    if ci:
+        out["ci95"] = bootstrap_hourly_auc(ys, ss, n=N_BOOT)
+    return out
 
 
 def _age_band(a):
@@ -136,10 +151,13 @@ def subgroups(patients: list[dict], P: PolicyParams) -> list[dict]:
         for pt in patients:
             buckets.setdefault(fn(pt), []).append(pt)
         for label, pts in sorted(buckets.items()):
-            agg = aggregate(run_policy(pts, "model", P))
+            res = run_policy(pts, "model", P)
+            agg = aggregate(res)
+            ci = bootstrap(res, keys=("sensitivity_early",), n=N_BOOT)
             out.append({"group": gname, "value": label, **{k: agg[k] for k in (
                 "patients", "septic_patients", "sensitivity_early", "median_lead_h",
-                "alerts_per_100_patient_days", "ppv")}})
+                "alerts_per_100_patient_days", "ppv")},
+                "sensitivity_early_ci95": ci.get("sensitivity_early")})
     return out
 
 
@@ -158,7 +176,7 @@ def run_evaluation(eval_path: Path, results_dir: Path, artifacts_dir: Path, sour
     log(f"selected policy on val: {P}")
     test_res = run_policy(test, "model", P)
     selected = {"params": P.to_dict(), "target_burden": target_burden, "selected_on": "val",
-                "val": chosen[1], "test": aggregate(test_res), "test_ci95": bootstrap(test_res)}
+                "val": chosen[1], "test": aggregate(test_res), "test_ci95": bootstrap(test_res, n=N_BOOT)}
 
     raw_chosen = _best(raw, target_burden)
     ablation = None
@@ -175,12 +193,18 @@ def run_evaluation(eval_path: Path, results_dir: Path, artifacts_dir: Path, sour
     for name, th in BASELINE_POINTS:
         bp = raw_params(float(th))
         b_val = aggregate(run_policy(val, name, bp))
-        b_test = aggregate(run_policy(test, name, bp))
+        b_res = run_policy(test, name, bp)
+        b_test = aggregate(b_res)
         m = _best(grid + raw, b_val["alerts_per_100_patient_days"])
-        row = {"baseline": name, "threshold": th, "val": b_val, "test": b_test}
+        row = {"baseline": name, "threshold": th, "val": b_val, "test": b_test,
+               "test_ci95": bootstrap(b_res, keys=("sensitivity_early", "alerts_per_100_patient_days"), n=N_BOOT)}
         if m:
+            v_res = run_policy(test, "model", m[0])
             row["vitalwatch_params"] = m[0].to_dict()
-            row["vitalwatch_test"] = aggregate(run_policy(test, "model", m[0]))
+            row["vitalwatch_test"] = aggregate(v_res)
+            row["vitalwatch_test_ci95"] = bootstrap(v_res, keys=("sensitivity_early", "alerts_per_100_patient_days"), n=N_BOOT)
+            # Same resampled patients for both policies: CI of (VitalWatch minus bedside score).
+            row["vitalwatch_minus_baseline_ci95"] = paired_bootstrap(v_res, b_res, n=N_BOOT)
         baselines.append(row)
 
     # 3. Curves on test for the chart (plain thresholds for every score).
@@ -200,8 +224,11 @@ def run_evaluation(eval_path: Path, results_dir: Path, artifacts_dir: Path, sour
         "source": source,
         "data_note": "SYNTHETIC data generated by VitalWatch (PhysioNet layout); not real patients"
                      if source == "synthetic" else "PhysioNet/CinC Challenge 2019 held-out test patients",
+        "dataset": DATASETS.get(source, source),
+        "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        "bootstrap_resamples": N_BOOT,
         "n_patients": {"val": len(val), "test": len(test)},
-        "hourly_test": {k: _hourly(test, k) for k in SCORE_KEYS},
+        "hourly_test": {k: _hourly(test, k, ci=(k == "model")) for k in SCORE_KEYS},
         "selected_policy": selected,
         "ablation_plain_threshold_same_burden": ablation,
         "alarm_reduction_test": alarm_reduction,

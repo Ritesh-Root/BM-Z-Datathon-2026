@@ -27,3 +27,34 @@ def test_present_on_admission_is_reported_separately():
     poa = score_patient([0], True, True, 3.0, 10)
     agg = aggregate([poa])
     assert agg["septic_patients"] == 0 and agg["poa_patients"] == 1 and agg["poa_detected"] == 1.0
+
+
+def test_paired_bootstrap_compares_policies_on_the_same_patients():
+    import numpy as np
+    import pytest
+
+    from vitalwatch.evaluation.metrics import bootstrap_hourly_auc, paired_bootstrap
+
+    # 40 septic patients: policy A alerts 5 h before onset in every one, policy B never alerts.
+    a = [score_patient([25], True, False, 30.0, 60) for _ in range(40)]
+    b = [score_patient([], True, False, 30.0, 60) for _ in range(40)]
+    ci = paired_bootstrap(a, b, n=50)
+    assert ci["sensitivity_early"] == [1.0, 1.0]          # the difference is 100 points in every resample
+    assert ci["alerts_per_100_patient_days"][0] > 0       # A raised alerts, B none
+    with pytest.raises(ValueError):
+        paired_bootstrap(a, b[:-1])
+
+    # Perfectly separated hourly scores give an AUROC and AUPRC interval of exactly 1.
+    ys = [np.array([0, 0, 1]) for _ in range(20)]
+    ss = [np.array([0.1, 0.2, 0.9]) for _ in range(20)]
+    auc = bootstrap_hourly_auc(ys, ss, n=20)
+    assert auc["auroc"] == [1.0, 1.0] and auc["auprc"] == [1.0, 1.0]
+
+
+def test_bootstrap_reports_ppv_interval():
+    from vitalwatch.evaluation.metrics import bootstrap
+
+    res = [score_patient([25], True, False, 30.0, 60) for _ in range(10)] + \
+          [score_patient([5], False, False, None, 48) for _ in range(10)]
+    ci = bootstrap(res, n=50)
+    assert 0.0 < ci["ppv"][0] <= ci["ppv"][1] <= 1.0

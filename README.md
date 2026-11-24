@@ -16,8 +16,8 @@ IBM Z Datathon 2026 &middot; Event code <b>SSF2026</b> &middot; Track: <b>Real-T
 >
 > | Part | Status |
 > |---|---|
-> | Live dashboard, model, alert policy, explanations, audit log | Built and tested (91 automated tests pass) |
-> | Results in this page | From our **synthetic** ICU dataset, which is built in the same format as the real PhysioNet 2019 data. The real-data run is one script on LinuxONE (see [Deploy on IBM LinuxONE](#12-deploy-on-ibm-linuxone)). |
+> | Live dashboard, model, alert policy, explanations, audit log | Built and tested (93 automated tests; 92 pass and 1 is skipped unless IBM Snap ML is installed) |
+> | Results in this page | From the **real PhysioNet/CinC Challenge 2019 data** (40,336 ICU stays, patient-level 70/15/15 split, run on 2026-11-24 on an ARM laptop). The earlier results on our synthetic cohort are kept as a labelled secondary table. The same script has not yet been run on IBM LinuxONE (see [Deploy on IBM LinuxONE](#12-deploy-on-ibm-linuxone)). |
 > | Benchmarks in this page | Measured on an **x86 development machine** as a reference. The IBM Telum accelerator numbers are produced by the same command on LinuxONE. |
 > | IBM Granite handoff notes | Built. They need the Granite model that ships in IBM's LinuxONE container; without it, instant template notes are used. |
 
@@ -50,7 +50,7 @@ IBM Z Datathon 2026 &middot; Event code <b>SSF2026</b> &middot; Track: <b>Real-T
 **In one sentence:** VitalWatch watches every ICU patient's vital signs and lab results, hour by hour, and warns the nurse early when a patient may be developing sepsis.
 
 - **Earlier:** it looks for the rising pattern hours before the clinical onset.
-- **Fewer alarms:** it only alerts when the risk keeps rising or jumps sharply, and stays quiet after a nurse has responded.
+- **Fewer alarms than bedside scores:** at the same or lower alarm load it flags more septic patients early, and it stays quiet after a nurse has responded (see the Results for what the alert logic does and does not add).
 - **Explained:** every alert says why ("heart rate 125, up 27 in the last 6 hours") and comes with a ready-written handoff note.
 - **Private and auditable:** everything runs on one IBM LinuxONE system. Patient names and IDs are never shown, and every decision is recorded in a log that reveals any tampering.
 
@@ -106,7 +106,7 @@ python -m vitalwatch demo --open
 
 Then open **http://localhost:38080** in a browser.
 
-The first run takes about 30 seconds. It creates the synthetic patients, trains the model and chooses the alert settings. After that:
+The first run takes about 30 seconds. It creates the synthetic patients, trains a small demo model on them and chooses the alert settings; this **replaces the files in `artifacts/`**, which in this repository hold the real-data model (`git restore artifacts` brings it back). After that:
 
 - **The ward grid** shows 24 beds. Each tile has the risk, a 48-hour risk line with the alert threshold, and the latest vitals.
 - **Within a few simulated hours** a bed turns red and appears in the alert strip at the top.
@@ -158,43 +158,80 @@ More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 | Onset | First hour the dataset labels sepsis, plus 6 hours (the dataset switches its label on 6 hours early) |
 
 <!-- results:start -->
-**Data: SYNTHETIC.** These numbers come from VitalWatch's own simulated ICU cohort (PhysioNet file layout), used while the real dataset downloads. Run `scripts/pipeline_physionet.sh` on LinuxONE and `python -m vitalwatch report` to replace them with PhysioNet 2019 results.
+**Data: REAL.** PhysioNet/Computing in Cardiology Challenge 2019, training sets A and B (v1.0.0, 40,336 ICU stays). Evaluated on 6,051 held-out test patients (never used for training, tuning or calibration). Run on 2026-11-24. 95% CIs resample whole patients (1,000 resamples).
 
 | Headline (held-out test patients) | Value |
 |---|---|
-| Septic patients flagged before onset | **51%** (95% CI 38% to 64%) |
-| Median warning before onset | **3 hours** |
-| Alerts per 100 patient-days | **24.1** |
-| Alerts that were followed by sepsis (PPV) | 17% |
-| Hourly AUROC / AUPRC | 0.812 / 0.115 |
+| Septic patients flagged before onset | **51%** (95% CI 46% to 56%) |
+| Median warning before onset | **7 hours** (95% CI 6 to 8) |
+| Alerts per 100 patient-days | **25.6** (95% CI 22.1 to 29.0) |
+| Alerts that were followed by sepsis (PPV) | 19% (95% CI 16% to 21%) |
+| Hourly AUROC | 0.843 (95% CI 0.827 to 0.859) |
+| Hourly AUPRC | 0.121 (95% CI 0.101 to 0.153) |
+| Septic test patients (excluding septic on admission) | 379 |
 
-Head to head with bedside scores at the same or lower alarm burden (every VitalWatch setting chosen on validation patients, then reported once on test):
+Head to head with bedside scores at the same or lower alarm burden (every VitalWatch setting chosen on validation patients, then reported once on test). The last column is the paired difference, VitalWatch minus the bedside score, on the same patients.
 
-| Bedside score | Its alerts per 100 pt-days | It flags early | VitalWatch alerts | VitalWatch flags early |
-|---|---|---|---|---|
-| NEWS2 ≥ 5 | 183 | 89% | 175 | **89%** |
-| NEWS2 ≥ 7 | 80 | 62% | 68 | **67%** |
-| qSOFA ≥ 2 | 63 | 47% | 50 | **60%** |
-| SIRS ≥ 2 | 226 | 89% | 212 | **91%** |
-| SIRS ≥ 3 | 65 | 47% | 57 | **64%** |
+| Bedside score | Its alerts per 100 pt-days | It flags early | VitalWatch alerts | VitalWatch flags early | Difference in flagged early (95% CI) |
+|---|---|---|---|---|---|
+| NEWS2 ≥ 5 | 167 | 80% | 160 | **90%** | +10 points (+5 to +14) |
+| NEWS2 ≥ 7 | 66 | 49% | 60 | **71%** | +22 points (+16 to +28) |
+| qSOFA ≥ 2 | 36 | 25% | 32 | **57%** | +32 points (+26 to +39) |
+| SIRS ≥ 2 | 183 | 83% | 174 | **92%** | +9 points (+5 to +13) |
+| SIRS ≥ 3 | 60 | 45% | 50 | **67%** | +22 points (+15 to +28) |
+
+**How to read the comparison**
+- The headline row is the one setting chosen on validation to flag the most septic patients at no more than 30 alerts per 100 patient-days. Each comparison row uses a separate VitalWatch setting, chosen on validation to match that bedside score's alarm burden, so the two tables are different operating points.
+- Bedside scores are partial (no mentation item) and NEWS2 was designed for general wards. NEWS2 >= 5 and SIRS >= 2 fire constantly in an ICU (above 160 alerts per 100 patient-days), so their high early-flag rates come with an alarm load that is not usable.
+- **The alert logic adds little over a plain threshold on this data.** A plain threshold with the same snooze, tuned on validation to the same burden limit, flagged 49% of septic patients at 24.1 alerts per 100 patient-days on test, against 51% at 25.6 for the selected policy. The gain over the bedside scores comes from the model's risk score.
+- **No alarm reduction is claimed against a plain monitor threshold.** The selected policy raised 2,472 alerts on the test patients, while the same threshold has 1,486 upward crossings, because the policy re-alerts after each snooze when risk stays high after a snooze or climbs further.
 
 Fairness check (selected policy, test patients):
 
-| Group | Patients | Septic | Flagged early | Alerts per 100 pt-days |
+| Group | Patients | Septic | Flagged early (95% CI) | Alerts per 100 pt-days |
 |---|---|---|---|---|
-| sex: female | 267 | 22 | 50% | 22.9 |
-| sex: male | 333 | 23 | 52% | 24.9 |
-| age: 18-49 | 119 | 10 | 50% | 15.4 |
-| age: 50-69 | 265 | 19 | 63% | 25.9 |
-| age: 70+ | 216 | 16 | 38% | 26.5 |
-| hospital: A | 297 | 21 | 48% | 21.7 |
-| hospital: B | 303 | 24 | 54% | 26.3 |
+| sex: female | 2,673 | 148 | 52% (44% to 60%) | 24.2 |
+| sex: male | 3,378 | 231 | 50% (43% to 56%) | 26.6 |
+| age: 18-49 | 1,417 | 66 | 44% (32% to 56%) | 22.9 |
+| age: 50-69 | 2,591 | 162 | 54% (47% to 62%) | 24.6 |
+| age: 70+ | 2,043 | 151 | 50% (42% to 59%) | 28.4 |
+| hospital: A | 3,051 | 239 | 51% (45% to 57%) | 30.7 |
+| hospital: B | 3,000 | 140 | 51% (42% to 59%) | 20.4 |
 
-![Sensitivity vs alarm burden](results/charts/burden_vs_sensitivity_synthetic.png)
+![Sensitivity vs alarm burden](results/charts/burden_vs_sensitivity_physionet.png)
 
-![Matched burden](results/charts/matched_burden_synthetic.png)
+![Matched burden](results/charts/matched_burden_physionet.png)
+
+
+<details>
+<summary><b>Secondary: results on the SYNTHETIC development cohort (not real patients)</b></summary>
+
+**Data: SYNTHETIC.** VitalWatch synthetic cohort. 600 held-out test patients. Not real patients: shown only as a development reference, and not evidence of clinical performance.
+
+| Synthetic cohort, held-out test patients | Value |
+|---|---|
+| Septic patients flagged before onset | 51% (95% CI 38% to 64%) |
+| Median warning before onset | 3 hours |
+| Alerts per 100 patient-days | 24.1 |
+| PPV | 17% |
+| Hourly AUROC / AUPRC | 0.812 / 0.115 |
+| qSOFA ≥ 2 at matched burden: bedside score / VitalWatch flagged early | 47% at 63 alerts / 60% at 50 alerts |
+
+Full synthetic results: `results/metrics_synthetic.json`.
+
+</details>
 
 <!-- results:end -->
+
+**Reproduce the real-data results on any x86 or ARM machine** (about 15 minutes to download 313 MB, then about 2 minutes to run):
+
+```bash
+python3.12 -m venv .venv && . .venv/bin/activate && pip install -r requirements-dev.txt
+scripts/pipeline_physionet.sh        # download, ingest, split, train, evaluate, charts, golden check
+python -m vitalwatch report          # rewrite this Results section
+```
+
+On macOS the script borrows the OpenMP library that scikit-learn's wheel ships, so Homebrew is not needed. On IBM LinuxONE (s390x) it runs inside the container as before and also benchmarks. Splits, training and bootstrap draws are seeded; a re-run on the same machine gave a byte-identical model file and identical metrics.
 
 Full method and limits: [docs/MODEL_CARD.md](docs/MODEL_CARD.md).
 
@@ -242,6 +279,7 @@ Full method and limits: [docs/MODEL_CARD.md](docs/MODEL_CARD.md).
 <!-- bench:end -->
 
 **How to read these numbers**
+- **The model measured here is the earlier 191-tree model trained on synthetic data.** The committed real-data model has 141 trees, and the benchmark and load test were not re-run for it. Re-run `bench` and `loadtest` on the target machine for numbers that match.
 - **1 ms = 1,000 microseconds.** A new hourly reading reaches the screen as an alert in about 5 to 7 ms end to end (dashboard footer, "Alert path p99").
 - **Snap ML on the CPU** is about 10 times faster than XGBoost for one patient, with identical decisions.
 - **More threads help big batches, not single patients.** XGBoost on all cores is faster for large batches but slightly slower for a single patient, because starting threads costs more than the work.
@@ -298,7 +336,7 @@ More: [docs/PRIVACY.md](docs/PRIVACY.md).
 
 **In one sentence:** we measure fairness, explain every alert, and state the limits plainly.
 
-- **Fairness check:** results by sex, age band and hospital are in the Results section above. On the synthetic data, patients aged 70 and over were flagged early less often. This gap is named in the model card and must be re-checked on real data.
+- **Fairness check:** results by sex, age band and hospital, with 95% intervals, are in the Results section above. On the real data all subgroup intervals overlap (the youngest band is lowest at 44%, from only 66 septic patients, interval 32% to 56%). That is absence of a detected gap, not proof of none: the subgroups are small. The synthetic data had shown a gap for patients aged 70 and over, which did not appear here.
 - **Explanations:** only clinical signals are shown as reasons. Context such as hours in ICU is used by the model but never shown, because a nurse cannot act on it.
 - **Limits:**
   - This is decision support, not a diagnosis or a medical device.
@@ -387,7 +425,7 @@ Other environment variables:
 
 ## 15. Testing
 
-**In one sentence:** 91 automated tests cover the data, the maths, safety and the live system.
+**In one sentence:** 93 automated tests cover the data, the maths, safety and the live system (92 pass; 1 needs IBM Snap ML and is skipped elsewhere).
 
 ```bash
 pytest
@@ -399,7 +437,7 @@ pytest
 | `test_features.py` | 47 | Live features equal training features exactly (with beds changing patients); no peeking at future hours; NEWS2/qSOFA/SIRS score tables |
 | `test_model.py` | 6 | Saved model matches reference predictions; Snap ML equals XGBoost; feature-version mismatch is refused |
 | `test_policy.py` | 11 | Alert logic: sustain, hysteresis, rise, snooze, breakthrough, escalation, resolve; fast and reference versions agree |
-| `test_metrics.py` | 2 | Metrics on a hand-calculated example |
+| `test_metrics.py` | 4 | Metrics on a hand-calculated example; paired and hourly bootstrap intervals |
 | `test_live.py` | 13 | Pseudonyms, audit tamper detection, note safety checks, notes never slow the alert path, no real IDs leak, web API, token, live event stream |
 | `test_platform.py` | 2 | Accelerator detection; benchmark reports unavailable engines honestly |
 | `test_repo_hygiene.py` | 2 | No emoji anywhere; every logo and font is licensed and credited |
@@ -415,7 +453,7 @@ pytest
 ```
 vitalwatch/     the application (see the table in section 5)
 scripts/        LinuxONE setup, real-data pipeline, dashboard launcher, data download
-tests/          the 91 automated tests
+tests/          the 93 automated tests
 configs/        default settings
 artifacts/      trained model (JSON), metadata, alert policy, reference predictions
 results/        metrics, benchmark and load-test results (JSON) and charts
@@ -436,7 +474,7 @@ docs/submission/ demo video (MP4) and pitch deck (PDF), ready to upload
 ## 18. FAQ and troubleshooting
 
 **Are these real patients?**
-Not yet. The page shows results on synthetic patients that follow the real PhysioNet 2019 format. On LinuxONE, `scripts/pipeline_physionet.sh` downloads the real, open-access data, and `report` updates this page.
+Yes, in the Results section: they are the held-out test patients of the PhysioNet/CinC Challenge 2019 data (de-identified, open access). Results on our synthetic cohort are kept as a labelled secondary table only. `scripts/pipeline_physionet.sh` downloads the data and reproduces everything, and `python -m vitalwatch report` rewrites the Results section.
 
 **Port 38080 is already in use.**
 Run `python -m vitalwatch demo --open --port 38081`.

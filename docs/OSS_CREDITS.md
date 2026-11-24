@@ -9,7 +9,7 @@ of their respective owners and are used only to identify the technology involved
 
 | Resource | Licence | Link |
 |---|---|---|
-| PhysioNet / Computing in Cardiology Challenge 2019: Early Prediction of Sepsis from Clinical Data | Open Data Commons Attribution v1.0 (see the PhysioNet page) | https://physionet.org/content/challenge-2019/1.0.0/ |
+| PhysioNet / Computing in Cardiology Challenge 2019: Early Prediction of Sepsis from Clinical Data | CC BY 4.0 as listed on the PhysioNet page; the LICENSE.txt inside the download is the ODC Open Database License (ODbL). Attribution is required under either | https://physionet.org/content/challenge-2019/1.0.0/ |
 
 Citations:
 - Reyna MA, Josef CS, Jeter R, et al. Early Prediction of Sepsis From Clinical Data: The PhysioNet/Computing in Cardiology Challenge 2019. Critical Care Medicine 48(2):210-217 (2020).
